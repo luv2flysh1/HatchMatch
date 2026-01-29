@@ -1,0 +1,172 @@
+HATCHMATCH - TEST PLAN SUMMARY
+==============================
+
+A comprehensive test plan covering all features in the HatchMatch app.
+
+
+TESTING APPROACH
+----------------
+
+Testing Pyramid:
+- 70% Unit Tests (stores, utilities, helpers)
+- 20% Integration Tests (services, API calls, database)
+- 10% E2E Tests (critical user flows)
+
+Test-Driven Development (TDD):
+1. Write failing tests first
+2. Implement code to pass
+3. Refactor while keeping tests green
+
+
+TESTING TOOLS
+-------------
+
+- Jest: Test runner (configured)
+- ts-jest: TypeScript support (configured)
+- @testing-library/react-native: Component testing (installed)
+- MSW: API mocking (installed)
+- Maestro: E2E testing (planned for future)
+
+Commands:
+  npm test              - Run all tests
+  npm run test:watch    - Watch mode
+  npm run test:coverage - Coverage report
+
+
+CURRENT TEST STATUS
+-------------------
+
+Passing Tests: 22
+- Auth Store: 11 tests
+- Validation Utils: 11 tests
+
+
+PHASE 1 (MVP) TEST COVERAGE
+---------------------------
+
+1. USER AUTHENTICATION
+   Unit Tests:
+   [x] Sign up success/failure
+   [x] Sign in success/failure
+   [x] Sign out
+   [x] Fetch profile
+   [x] Update profile
+   [x] Loading states
+
+   Integration Tests:
+   [ ] Full signup flow with profile creation
+   [ ] Session persistence across app restart
+   [ ] Token refresh
+
+   E2E Scenarios:
+   [ ] New user signup flow
+   [ ] Existing user login flow
+   [ ] Logout flow
+
+2. WATER BODY SEARCH
+   Unit Tests:
+   [ ] Search by name
+   [ ] Search nearby (GPS)
+   [ ] Get water body details
+   [ ] Toggle favorites
+   [x] Distance calculations
+
+   Integration Tests:
+   [ ] Search with filters
+   [ ] Pagination
+   [ ] Caching
+
+   E2E Scenarios:
+   [ ] Search and view results
+   [ ] Find nearby waters
+   [ ] Save to favorites
+
+3. FLY RECOMMENDATIONS
+   Unit Tests:
+   [ ] Get recommendations
+   [ ] Cache handling
+   [ ] Sort/filter recommendations
+
+   Integration Tests:
+   [ ] Claude API integration
+   [ ] Response parsing
+   [ ] Error handling
+   [ ] Caching behavior
+
+   E2E Scenarios:
+   [ ] View recommendations for water body
+   [ ] Verify recommendation details
+
+4. TRIP PLANNING
+   Unit Tests:
+   [ ] Create/update/delete trip
+   [ ] Add/remove waters
+   [ ] Reorder waters
+   [ ] Date formatting
+
+   Integration Tests:
+   [ ] Multi-water trips
+   [ ] Cascade delete
+   [ ] RLS policies
+
+   E2E Scenarios:
+   [ ] Create new trip
+   [ ] View trip with recommendations
+   [ ] Delete trip
+
+5. FLY SHOP LOCATOR
+   Unit Tests:
+   [ ] Search nearby shops
+   [ ] Format hours
+   [ ] Check if open
+   [ ] Generate directions URL
+
+   Integration Tests:
+   [ ] Google Places integration
+   [ ] Deep link to maps
+
+   E2E Scenarios:
+   [ ] Find shops near me
+   [ ] Get directions to shop
+
+
+PHASE 2 TEST AREAS
+------------------
+
+- Multi-trip management
+- Catch reporting (with photo upload)
+- Offline mode (download, view, sync)
+- Purchase integration (affiliate links)
+- Push notifications
+
+
+PHASE 3 TEST AREAS
+------------------
+
+- Shop partnerships
+- Social features (follow, share)
+- Advanced analytics
+- Gear management
+
+
+COVERAGE GOALS
+--------------
+
+Category              Target    Current
+--------              ------    -------
+Unit Tests            80%       ~60%
+Integration Tests     60%       ~10%
+E2E Critical Paths    100%      0%
+
+
+CRITICAL USER FLOWS (Require E2E)
+---------------------------------
+
+1. Onboarding: Signup -> Search -> View Recommendations
+2. Trip Planning: Create Trip -> Add Waters -> View Recommendations
+3. Core Loop: Search -> Recommendations -> Plan -> Fish -> Report
+4. Premium Upgrade: Hit limit -> See upgrade -> Complete purchase
+
+
+==============================
+For detailed test cases, see TEST_PLAN.md
