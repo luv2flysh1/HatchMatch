@@ -1,0 +1,153 @@
+HATCHMATCH - APP OVERVIEW
+==================================
+
+A mobile app (iPhone & Android) that tells you which flies are working
+best on any river or lake.
+
+SCOPE: US waters for MVP, global expansion in later phase
+SPECIES: All species supported (trout recommendations strongest initially)
+
+
+WHAT IT DOES
+------------
+
+* Search for any river or lake by name or find waters near you
+* Get AI-powered fly recommendations based on season, weather,
+  hatch charts, and water conditions
+* Plan single or multi-destination fishing trips
+* Find fly shops near your destination with driving directions
+* Buy recommended flies from online retailers
+* Log your catches to help improve recommendations for everyone
+
+
+KEY FEATURES (MVP)
+------------------
+
+1. WATER BODY SEARCH
+   - Search by name and location (city, state)
+   - Find rivers and lakes near your current location
+   - Save favorite waters
+
+2. FLY RECOMMENDATIONS
+   - Top flies for any water body
+   - Based on: season, weather, hatch charts, water type, species
+   - Includes fly name, size, and technique tips
+
+3. TRIP PLANNING
+   - Single day trips or multi-day trips
+   - Single location or multiple waters
+   - Auto-updates recommendations when you open the app
+   - Save multiple future trips
+
+4. FLY SHOP FINDER
+   - Shops near any water body
+   - Address, phone, hours
+   - One-tap directions in your favorite maps app
+
+5. CATCH REPORTING (Phase 2)
+   - Log what flies worked for you
+   - See what's working for other anglers
+   - Community-driven data improves recommendations
+
+
+HOW FLY RECOMMENDATIONS WORK
+----------------------------
+
+Data comes from multiple sources:
+
+1. AI predictions using seasonal hatch charts, weather data,
+   and water conditions
+
+2. User-reported catches from the angler community
+
+3. Aggregated fishing reports from guides and shops
+
+4. Future: Direct partnerships with local fly shops
+   for real-time "what's hot" updates
+
+
+BUSINESS MODEL
+--------------
+
+Freemium - free to use with optional premium upgrade.
+
+PRICING:
+- Free: Core features with limits
+- Premium: $4.99/month or $29.99/year (50% discount)
+- Season Pass: $19.99 for Apr-Oct (alternative option)
+
+FREE vs PREMIUM:
+
+  Feature                  Free              Premium
+  -------                  ----              -------
+  Fly recommendations      1 water/day       Unlimited
+  Trip planning            1 active trip     Unlimited
+  Fly shop locator         Full access       Full access
+  Catch reporting          Full access       Full access
+  Offline mode             No                Yes
+  Auto-refresh trips       No                Yes
+  Ad-free                  No                Yes
+
+Additional revenue from affiliate commissions when users buy flies
+through retailer links in the app.
+
+
+API COSTS (Claude AI for Recommendations)
+-----------------------------------------
+
+Estimated cost per fly recommendation request: ~$0.004 - $0.005
+(less than half a cent using Claude Haiku model)
+
+Monthly cost projections:
+- 10,000 requests/month:  ~$40-50
+- 50,000 requests/month:  ~$200-250
+- 100,000 requests/month: ~$400-500
+
+Cost optimization:
+- Aggressive caching (same water + date = cached result)
+- Batch requests for multi-water trips
+- Smart cache expiry (12-24 hours)
+
+
+TECHNOLOGY
+----------
+
+- Built with Expo (React Native) for iOS and Android
+- Single codebase, native performance on both platforms
+- Works offline for remote fishing locations (Premium)
+
+
+DEVELOPMENT PHASES
+------------------
+
+PHASE 1 (MVP):
+- User accounts and profiles
+- Water body search
+- AI fly recommendations
+- Basic trip planning
+- Fly shop locator
+
+PHASE 2:
+- Multi-trip management with auto-refresh
+- Catch reporting and community data
+- Offline mode
+- Links to buy flies online
+- Push notifications
+
+PHASE 3:
+- Shop/guide partnerships
+- Social features
+- Personal analytics
+- Fly box inventory tracking
+
+
+OPEN QUESTIONS
+--------------
+
+1. Business model - DECIDED: Freemium (see above)
+2. Geographic scope - DECIDED: US-only for MVP, global later
+3. Species - DECIDED: All species, trout-heavy recommendations initially
+
+
+==================================
+Questions? Contact: [Your email here]
