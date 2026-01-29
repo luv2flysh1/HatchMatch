@@ -1,19 +1,69 @@
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useWaterStore } from '../../stores/waterStore';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function WaterDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { user } = useAuthStore();
+  const {
+    selectedWater,
+    isLoading,
+    error,
+    getWaterBody,
+    toggleFavorite,
+    isFavorite,
+  } = useWaterStore();
 
-  // Mock data - will come from API
-  const waterBody = {
-    id,
-    name: 'Sample River',
-    type: 'river',
-    state: 'CO',
-    species: ['Rainbow Trout', 'Brown Trout'],
+  const [isFav, setIsFav] = useState(false);
+  const [isTogglingFav, setIsTogglingFav] = useState(false);
+
+  useEffect(() => {
+    if (id) {
+      getWaterBody(id);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      setIsFav(isFavorite(id));
+    }
+  }, [id, isFavorite]);
+
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      // TODO: Prompt to sign in
+      return;
+    }
+    setIsTogglingFav(true);
+    await toggleFavorite(id);
+    setIsFav(isFavorite(id));
+    setIsTogglingFav(false);
   };
 
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#2563eb" />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !selectedWater) {
+    return (
+      <SafeAreaView style={styles.container} edges={['bottom']}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error || 'Water body not found'}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Mock recommendations - will be replaced with real AI recommendations
   const recommendations = [
     {
       id: '1',
@@ -21,7 +71,7 @@ export default function WaterDetailScreen() {
       type: 'dry',
       size: '14-18',
       confidence: 85,
-      reasoning: 'PMD hatch expected in afternoon hours.',
+      reasoning: 'PMD hatch expected in afternoon hours based on current conditions.',
     },
     {
       id: '2',
@@ -29,7 +79,7 @@ export default function WaterDetailScreen() {
       type: 'nymph',
       size: '16-18',
       confidence: 80,
-      reasoning: 'Effective year-round subsurface pattern.',
+      reasoning: 'Effective year-round subsurface pattern for this water.',
     },
     {
       id: '3',
@@ -45,13 +95,19 @@ export default function WaterDetailScreen() {
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView>
         <View style={styles.header}>
-          <Text style={styles.waterName}>{waterBody.name}</Text>
+          <Text style={styles.waterName}>{selectedWater.name}</Text>
           <Text style={styles.waterMeta}>
-            {waterBody.type} • {waterBody.state}
+            {formatWaterType(selectedWater.type)} • {selectedWater.state}
+            {selectedWater.city && ` • ${selectedWater.city}`}
           </Text>
-          <Text style={styles.species}>
-            Species: {waterBody.species.join(', ')}
-          </Text>
+          {selectedWater.species && selectedWater.species.length > 0 && (
+            <Text style={styles.species}>
+              Species: {selectedWater.species.join(', ')}
+            </Text>
+          )}
+          {selectedWater.description && (
+            <Text style={styles.description}>{selectedWater.description}</Text>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -81,8 +137,18 @@ export default function WaterDetailScreen() {
           <Pressable style={styles.addToTripButton}>
             <Text style={styles.addToTripButtonText}>Add to Trip</Text>
           </Pressable>
-          <Pressable style={styles.favoriteButton}>
-            <Text style={styles.favoriteButtonText}>Save to Favorites</Text>
+          <Pressable
+            style={[styles.favoriteButton, isFav && styles.favoriteButtonActive]}
+            onPress={handleToggleFavorite}
+            disabled={isTogglingFav}
+          >
+            {isTogglingFav ? (
+              <ActivityIndicator size="small" color={isFav ? '#ffffff' : '#374151'} />
+            ) : (
+              <Text style={[styles.favoriteButtonText, isFav && styles.favoriteButtonTextActive]}>
+                {isFav ? 'Saved to Favorites' : 'Save to Favorites'}
+              </Text>
+            )}
           </Pressable>
         </View>
       </ScrollView>
@@ -90,10 +156,30 @@ export default function WaterDetailScreen() {
   );
 }
 
+function formatWaterType(type: string): string {
+  return type.charAt(0).toUpperCase() + type.slice(1);
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#dc2626',
+    textAlign: 'center',
   },
   header: {
     backgroundColor: '#ffffff',
@@ -114,8 +200,14 @@ const styles = StyleSheet.create({
   },
   species: {
     fontSize: 14,
-    color: '#6b7280',
+    color: '#2563eb',
     marginTop: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#4b5563',
+    marginTop: 12,
+    lineHeight: 20,
   },
   section: {
     padding: 16,
@@ -200,10 +292,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#e5e7eb',
+    minHeight: 48,
+    justifyContent: 'center',
+  },
+  favoriteButtonActive: {
+    backgroundColor: '#2563eb',
+    borderColor: '#2563eb',
   },
   favoriteButtonText: {
     color: '#374151',
     fontSize: 16,
     fontWeight: '600',
+  },
+  favoriteButtonTextActive: {
+    color: '#ffffff',
   },
 });
