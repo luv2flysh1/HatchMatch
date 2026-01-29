@@ -9,7 +9,9 @@
     "web": "expo start --web",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:edge": "deno test --allow-env --allow-net supabase/functions/",
+    "test:all": "npm run test && npm run test:edge"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.3",
