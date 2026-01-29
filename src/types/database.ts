@@ -138,4 +138,5 @@ export interface FlyRecommendation {
   reasoning: string;
   size: string;
   technique: string;
+  image_url?: string | null;
 }

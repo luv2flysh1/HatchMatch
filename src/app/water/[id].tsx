@@ -6,6 +6,7 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
@@ -198,6 +199,19 @@ function FlyCard({ fly, rank }: { fly: FlyRecommendation; rank: number }) {
     <View style={styles.flyCard}>
       <View style={styles.flyHeader}>
         <Text style={styles.flyRank}>#{rank}</Text>
+        {fly.image_url ? (
+          <Image
+            source={{ uri: fly.image_url }}
+            style={styles.flyImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.flyImagePlaceholder}>
+            <Text style={styles.flyImagePlaceholderText}>
+              {fly.fly_type.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
         <View style={styles.flyInfo}>
           <Text style={styles.flyName}>{fly.fly_name}</Text>
           <Text style={styles.flyMeta}>
@@ -391,6 +405,27 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#2563eb',
     width: 30,
+  },
+  flyImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#f3f4f6',
+  },
+  flyImagePlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#e5e7eb',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  flyImagePlaceholderText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#9ca3af',
   },
   flyInfo: {
     flex: 1,

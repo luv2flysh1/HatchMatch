@@ -28,6 +28,7 @@ interface FlyRecommendation {
   reasoning: string;
   size: string;
   technique: string;
+  image_url?: string | null;
 }
 
 serve(async (req) => {
@@ -208,6 +209,7 @@ function parseClaudeResponse(responseText: string, flies: any[]): FlyRecommendat
         reasoning: rec.reasoning,
         size: rec.size,
         technique: rec.technique,
+        image_url: fly?.image_url || null,
       };
     }).slice(0, 5); // Ensure max 5 recommendations
 
@@ -237,6 +239,7 @@ function getDefaultRecommendations(flies: any[]): FlyRecommendation[] {
       reasoning: 'Versatile pattern that works in most conditions.',
       size: d.size,
       technique: d.technique,
+      image_url: fly?.image_url || null,
     };
   });
 }

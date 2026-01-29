@@ -1,0 +1,40 @@
+{
+  "version": "5",
+  "remote": {
+    "https://deno.land/std@0.168.0/fmt/colors.ts": "03ad95e543d2808bc43c17a3dd29d25b43d0f16287fe562a0be89bf632454a12",
+    "https://deno.land/std@0.168.0/testing/_diff.ts": "a23e7fc2b4d8daa3e158fa06856bedf5334ce2a2831e8bf9e509717f455adb2c",
+    "https://deno.land/std@0.168.0/testing/_format.ts": "cd11136e1797791045e639e9f0f4640d5b4166148796cad37e6ef75f7d7f3832",
+    "https://deno.land/std@0.168.0/testing/asserts.ts": "51353e79437361d4b02d8e32f3fc83b22231bc8f8d4c841d86fd32b0b0afe940"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@supabase/supabase-js@^2.93.3",
+        "npm:@testing-library/jest-native@^5.4.3",
+        "npm:@testing-library/react-native@^13.3.3",
+        "npm:@types/jest@30",
+        "npm:@types/react@19.1",
+        "npm:expo-constants@~18.0.13",
+        "npm:expo-linking@~8.0.11",
+        "npm:expo-location@~19.0.8",
+        "npm:expo-router@~6.0.22",
+        "npm:expo-secure-store@~15.0.8",
+        "npm:expo-status-bar@~3.0.9",
+        "npm:expo@~54.0.32",
+        "npm:jest-expo@^54.0.16",
+        "npm:jest@^30.2.0",
+        "npm:msw@^2.12.7",
+        "npm:react-dom@19.1.0",
+        "npm:react-native-gesture-handler@2.28",
+        "npm:react-native-safe-area-context@5.6",
+        "npm:react-native-screens@4.16",
+        "npm:react-native-web@0.21",
+        "npm:react-native@0.81.5",
+        "npm:react@19.1.0",
+        "npm:ts-jest@^29.4.6",
+        "npm:typescript@~5.9.2",
+        "npm:zustand@^5.0.10"
+      ]
+    }
+  }
+}
