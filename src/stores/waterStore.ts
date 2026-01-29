@@ -2,6 +2,15 @@ import { create } from 'zustand';
 import { supabase } from '../services/supabase';
 import type { WaterBody } from '../types/database';
 
+// US State abbreviations for state search detection
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY',
+];
+
 interface WaterState {
   // Data
   searchResults: WaterBody[];
@@ -44,15 +53,34 @@ export const useWaterStore = create<WaterState>((set, get) => ({
     set({ isSearching: true, error: null });
 
     try {
-      let queryBuilder = supabase
-        .from('water_bodies')
-        .select('*')
-        .ilike('name', `%${query}%`)
-        .order('name')
-        .limit(20);
+      const trimmedQuery = query.trim();
+      const upperQuery = trimmedQuery.toUpperCase();
 
-      if (state) {
-        queryBuilder = queryBuilder.eq('state', state.toUpperCase());
+      // Check if query is a US state abbreviation
+      const isStateSearch = US_STATES.includes(upperQuery);
+
+      let queryBuilder;
+
+      if (isStateSearch) {
+        // Search for all waters in this state
+        queryBuilder = supabase
+          .from('water_bodies')
+          .select('*')
+          .eq('state', upperQuery)
+          .order('name')
+          .limit(50);
+      } else {
+        // Search by name
+        queryBuilder = supabase
+          .from('water_bodies')
+          .select('*')
+          .ilike('name', `%${trimmedQuery}%`)
+          .order('name')
+          .limit(20);
+
+        if (state) {
+          queryBuilder = queryBuilder.eq('state', state.toUpperCase());
+        }
       }
 
       const { data, error } = await queryBuilder;
