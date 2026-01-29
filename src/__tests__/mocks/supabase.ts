@@ -1,11 +1,15 @@
 // Mock Supabase responses for testing
 
+import type { User } from '@supabase/supabase-js';
 import type { Profile, WaterBody, Fly } from '../../types/database';
 
-export const mockUser = {
+export const mockUser: User = {
   id: 'test-user-id-123',
   email: 'test@example.com',
   created_at: '2026-01-01T00:00:00Z',
+  app_metadata: {},
+  user_metadata: {},
+  aud: 'authenticated',
 };
 
 export const mockSession = {
