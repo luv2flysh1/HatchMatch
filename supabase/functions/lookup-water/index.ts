@@ -90,9 +90,7 @@ async function searchUSGSSites(query: string, state?: string, limit = 20): Promi
   try {
     const params = new URLSearchParams({
       format: 'rdb',
-      siteType: 'ST,LK,SP', // ST=Stream, LK=Lake, SP=Spring
       siteStatus: 'all',
-      hasDataTypeCd: 'iv,dv', // Sites with instantaneous or daily values
     });
 
     // If a state is provided, search within that state
@@ -100,9 +98,7 @@ async function searchUSGSSites(query: string, state?: string, limit = 20): Promi
       params.append('stateCd', state.toUpperCase());
     }
 
-    // USGS doesn't support text search, so we'll fetch sites and filter
-    // For better results, we search by site name pattern if available
-    // The USGS API supports partial name matches with % wildcards
+    // USGS API supports partial name matches with % wildcards
     const searchPattern = `%${query}%`;
     params.append('siteName', searchPattern);
 
@@ -195,60 +191,14 @@ function parseUSGSResponse(rdbText: string, limit: number): ExternalWaterBody[] 
 
 /**
  * Search USGS Geographic Names Information System (GNIS)
- * This is better for finding water bodies by name
+ * Note: The old GNIS API has been deprecated. This function is kept for
+ * potential future use with an updated endpoint.
  */
-async function searchGNIS(query: string, state?: string, limit = 20): Promise<ExternalWaterBody[]> {
-  try {
-    // GNIS API parameters
-    const params = new URLSearchParams({
-      term: query,
-      featureClass: 'Stream,Lake,Reservoir,Spring,Swamp',
-      rows: (limit * 2).toString(),
-      format: 'json',
-    });
-
-    if (state && state.length === 2) {
-      params.append('stateAbbr', state.toUpperCase());
-    }
-
-    const response = await fetch(`${GNIS_API}?${params}`);
-
-    if (!response.ok) {
-      console.error('GNIS API error:', response.status);
-      return [];
-    }
-
-    const data = await response.json();
-
-    if (!data.features || !Array.isArray(data.features)) {
-      return [];
-    }
-
-    return data.features
-      .filter((feature: any) => {
-        const featureClass = feature.properties?.featureClass?.toLowerCase() || '';
-        return ['stream', 'lake', 'reservoir', 'spring', 'swamp'].some(t => featureClass.includes(t));
-      })
-      .map((feature: any): ExternalWaterBody => {
-        const props = feature.properties || {};
-        const coords = feature.geometry?.coordinates || [0, 0];
-
-        return {
-          id: `gnis-${props.geonameId || props.featureId || Math.random().toString(36).slice(2)}`,
-          name: formatSiteName(props.name || props.featureName || 'Unknown'),
-          type: mapGNISFeatureClass(props.featureClass),
-          state: props.stateAbbr || props.state || '',
-          county: props.countyName || props.county,
-          latitude: coords[1] || props.lat || 0,
-          longitude: coords[0] || props.lng || 0,
-          source: 'gnis',
-        };
-      })
-      .filter((w: ExternalWaterBody) => w.latitude !== 0 && w.longitude !== 0);
-  } catch (error) {
-    console.error('GNIS search error:', error);
-    return [];
-  }
+async function searchGNIS(_query: string, _state?: string, _limit = 20): Promise<ExternalWaterBody[]> {
+  // GNIS API at geonames.usgs.gov has been deprecated/moved
+  // The USGS Water Services API provides sufficient coverage for water bodies
+  // Return empty array for now - USGS search handles most cases
+  return [];
 }
 
 /**
