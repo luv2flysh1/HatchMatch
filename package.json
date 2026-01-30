@@ -11,7 +11,10 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:edge": "deno test --allow-env --allow-net supabase/functions/",
-    "test:all": "npm run test && npm run test:edge"
+    "test:all": "npm run test && npm run test:edge",
+    "seed:water-bodies": "tsx scripts/seed-water-bodies.ts",
+    "seed:water-bodies:sql": "tsx scripts/seed-water-bodies.ts --sql",
+    "seed:water-bodies:dry-run": "tsx scripts/seed-water-bodies.ts --dry-run"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -42,6 +45,7 @@
     "jest-expo": "^54.0.16",
     "msw": "^2.12.7",
     "ts-jest": "^29.4.6",
+    "tsx": "^4.7.0",
     "typescript": "~5.9.2"
   },
   "private": true

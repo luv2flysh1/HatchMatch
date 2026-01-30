@@ -1,6 +1,20 @@
 import { create } from 'zustand';
 import { supabase } from '../services/supabase';
-import type { WaterBody } from '../types/database';
+import type { WaterBody, WaterBodyType } from '../types/database';
+
+// External water body result from USGS/GNIS lookup
+export interface ExternalWaterBody {
+  id: string;
+  name: string;
+  type: WaterBodyType;
+  state: string;
+  county?: string;
+  latitude: number;
+  longitude: number;
+  source: 'usgs' | 'gnis';
+  usgs_site_id?: string;
+  huc?: string;
+}
 
 // US State name to abbreviation mapping
 const STATE_NAME_TO_ABBR: Record<string, string> = {
@@ -43,6 +57,7 @@ function getStateAbbr(query: string): string | null {
 interface WaterState {
   // Data
   searchResults: WaterBody[];
+  externalResults: ExternalWaterBody[];
   favorites: WaterBody[];
   selectedWater: WaterBody | null;
   recentSearches: string[];
@@ -50,15 +65,19 @@ interface WaterState {
   // UI State
   isLoading: boolean;
   isSearching: boolean;
+  isSearchingExternal: boolean;
   error: string | null;
+  lastSearchQuery: string;
 
   // Actions
   searchByName: (query: string, state?: string) => Promise<void>;
   searchNearby: (latitude: number, longitude: number, radiusMiles?: number) => Promise<void>;
+  searchExternal: (query: string, state?: string) => Promise<void>;
   getWaterBody: (id: string) => Promise<WaterBody | null>;
   getFavorites: () => Promise<void>;
   toggleFavorite: (waterBodyId: string) => Promise<{ error: Error | null }>;
   isFavorite: (waterBodyId: string) => boolean;
+  addExternalWaterToDatabase: (water: ExternalWaterBody) => Promise<WaterBody | null>;
   clearSearch: () => void;
   clearError: () => void;
 }
@@ -66,20 +85,23 @@ interface WaterState {
 export const useWaterStore = create<WaterState>((set, get) => ({
   // Initial state
   searchResults: [],
+  externalResults: [],
   favorites: [],
   selectedWater: null,
   recentSearches: [],
   isLoading: false,
   isSearching: false,
+  isSearchingExternal: false,
   error: null,
+  lastSearchQuery: '',
 
   searchByName: async (query: string, state?: string) => {
     if (!query.trim()) {
-      set({ searchResults: [], isSearching: false });
+      set({ searchResults: [], externalResults: [], isSearching: false, lastSearchQuery: '' });
       return;
     }
 
-    set({ isSearching: true, error: null });
+    set({ isSearching: true, error: null, externalResults: [], lastSearchQuery: query.trim() });
 
     try {
       const trimmedQuery = query.trim();
@@ -275,8 +297,96 @@ export const useWaterStore = create<WaterState>((set, get) => ({
     return get().favorites.some(f => f.id === waterBodyId);
   },
 
+  searchExternal: async (query: string, state?: string) => {
+    if (!query.trim()) {
+      set({ externalResults: [], isSearchingExternal: false });
+      return;
+    }
+
+    set({ isSearchingExternal: true });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('lookup-water', {
+        body: {
+          query: query.trim(),
+          state: state?.toUpperCase(),
+          limit: 15,
+        },
+      });
+
+      if (error) {
+        console.error('External lookup error:', error);
+        set({ externalResults: [], isSearchingExternal: false });
+        return;
+      }
+
+      set({
+        externalResults: data?.results || [],
+        isSearchingExternal: false,
+      });
+    } catch (error) {
+      console.error('External search failed:', error);
+      set({
+        externalResults: [],
+        isSearchingExternal: false,
+      });
+    }
+  },
+
+  addExternalWaterToDatabase: async (water: ExternalWaterBody) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      // Insert the external water body into our database
+      const { data, error } = await supabase
+        .from('water_bodies')
+        .insert({
+          name: water.name,
+          type: water.type,
+          state: water.state,
+          city: water.county || null, // Use county as city if available
+          latitude: water.latitude,
+          longitude: water.longitude,
+          species: [], // Will be populated later
+          usgs_site_id: water.usgs_site_id || null,
+          description: water.source === 'usgs'
+            ? `Imported from USGS Water Services${water.huc ? ` (HUC: ${water.huc})` : ''}`
+            : `Imported from USGS GNIS`,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        // Check if it's a duplicate (water body already exists)
+        if (error.code === '23505') {
+          set({ error: 'This water body already exists in the database', isLoading: false });
+        } else {
+          set({ error: error.message, isLoading: false });
+        }
+        return null;
+      }
+
+      // Remove from external results and add to search results
+      const { externalResults, searchResults } = get();
+      set({
+        externalResults: externalResults.filter(w => w.id !== water.id),
+        searchResults: [data, ...searchResults],
+        selectedWater: data,
+        isLoading: false,
+      });
+
+      return data;
+    } catch (error) {
+      set({
+        error: (error as Error).message,
+        isLoading: false,
+      });
+      return null;
+    }
+  },
+
   clearSearch: () => {
-    set({ searchResults: [], error: null });
+    set({ searchResults: [], externalResults: [], error: null, lastSearchQuery: '' });
   },
 
   clearError: () => {

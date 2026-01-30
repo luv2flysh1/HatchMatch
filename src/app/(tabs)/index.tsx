@@ -6,11 +6,13 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
+  Alert,
+  ScrollView,
 } from 'react-native';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useWaterStore } from '../../stores/waterStore';
+import { useWaterStore, ExternalWaterBody } from '../../stores/waterStore';
 import { useLocation } from '../../hooks/useLocation';
 import { WaterMapView } from '../../components/WaterMapView';
 import type { WaterBody } from '../../types/database';
@@ -28,10 +30,16 @@ export default function SearchScreen() {
 
   const {
     searchResults,
+    externalResults,
     isSearching,
+    isSearchingExternal,
+    isLoading,
     error,
+    lastSearchQuery,
     searchByName,
     searchNearby,
+    searchExternal,
+    addExternalWaterToDatabase,
     clearSearch,
     clearError,
   } = useWaterStore();
@@ -72,6 +80,68 @@ export default function SearchScreen() {
   const handleWaterPress = useCallback((water: WaterBody) => {
     router.push(`/water/${water.id}`);
   }, []);
+
+  // Trigger external search when database search returns no results
+  useEffect(() => {
+    if (
+      !isSearching &&
+      searchResults.length === 0 &&
+      lastSearchQuery.length >= 2 &&
+      externalResults.length === 0 &&
+      !isSearchingExternal
+    ) {
+      // Small delay to avoid rapid API calls during typing
+      const timer = setTimeout(() => {
+        searchExternal(lastSearchQuery);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isSearching, searchResults.length, lastSearchQuery, externalResults.length, isSearchingExternal, searchExternal]);
+
+  const handleExternalWaterPress = useCallback(async (water: ExternalWaterBody) => {
+    Alert.alert(
+      'Add to Database',
+      `Would you like to add "${water.name}" to the HatchMatch database? This will allow you to get fly recommendations and save it to favorites.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Add',
+          onPress: async () => {
+            const added = await addExternalWaterToDatabase(water);
+            if (added) {
+              router.push(`/water/${added.id}`);
+            }
+          },
+        },
+      ]
+    );
+  }, [addExternalWaterToDatabase]);
+
+  const renderExternalWaterItem = useCallback(({ item }: { item: ExternalWaterBody }) => (
+    <Pressable
+      style={styles.externalWaterCard}
+      onPress={() => handleExternalWaterPress(item)}
+    >
+      <View style={styles.waterInfo}>
+        <View style={styles.externalNameRow}>
+          <Text style={styles.waterName}>{item.name}</Text>
+          <View style={styles.externalBadge}>
+            <Text style={styles.externalBadgeText}>
+              {item.source === 'usgs' ? 'USGS' : 'GNIS'}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.waterMeta}>
+          {formatWaterType(item.type)} {item.state && `• ${item.state}`}
+          {item.county && ` • ${item.county}`}
+        </Text>
+        <Text style={styles.externalHint}>Tap to add to database</Text>
+      </View>
+    </Pressable>
+  ), [handleExternalWaterPress]);
 
   const renderWaterItem = useCallback(({ item }: { item: WaterBody & { distance?: number } }) => (
     <Pressable
@@ -214,29 +284,64 @@ export default function SearchScreen() {
             userLocation={userLocation}
           />
         )
+      ) : searchQuery.length > 0 && !isSearching ? (
+        <ScrollView style={styles.noResultsContainer} contentContainerStyle={styles.noResultsContent}>
+          <View style={styles.noResultsHeader}>
+            <Text style={styles.noResultsTitle}>Not in Our Database</Text>
+            <Text style={styles.noResultsSubtitle}>
+              No curated waters found for "{searchQuery}"
+            </Text>
+          </View>
+
+          {isSearchingExternal ? (
+            <View style={styles.externalLoadingContainer}>
+              <ActivityIndicator size="small" color="#6366f1" />
+              <Text style={styles.externalLoadingText}>
+                Searching USGS water databases...
+              </Text>
+            </View>
+          ) : externalResults.length > 0 ? (
+            <View style={styles.externalResultsSection}>
+              <View style={styles.externalHeader}>
+                <Text style={styles.externalTitle}>Found in USGS Database</Text>
+                <Text style={styles.externalDescription}>
+                  These waters were found in government databases. Tap to add one to HatchMatch and get fly recommendations.
+                </Text>
+              </View>
+              <FlatList
+                data={externalResults}
+                keyExtractor={(item) => item.id}
+                renderItem={renderExternalWaterItem}
+                scrollEnabled={false}
+                contentContainerStyle={styles.externalList}
+              />
+            </View>
+          ) : (
+            <View style={styles.noExternalResults}>
+              <Text style={styles.noExternalText}>
+                No matching waters found in external databases either.
+              </Text>
+              <Text style={styles.noExternalHint}>
+                Try a different search term or check spelling.
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      ) : lastNearbySearch && !isSearching ? (
+        <View style={styles.placeholder}>
+          <Text style={styles.placeholderTitle}>No Waters Found</Text>
+          <Text style={styles.placeholderText}>
+            No fishing waters found within {searchRadius} miles of your location.
+            Try increasing the search radius above.
+          </Text>
+        </View>
       ) : (
         <View style={styles.placeholder}>
-          {searchQuery.length > 0 && !isSearching ? (
-            <Text style={styles.placeholderText}>
-              No waters found matching "{searchQuery}"
-            </Text>
-          ) : lastNearbySearch && !isSearching ? (
-            <>
-              <Text style={styles.placeholderTitle}>No Waters Found</Text>
-              <Text style={styles.placeholderText}>
-                No fishing waters found within {searchRadius} miles of your location.
-                Try increasing the search radius above.
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.placeholderTitle}>Find Your Water</Text>
-              <Text style={styles.placeholderText}>
-                Search for a river or lake by name, or tap "Find Waters Near Me"
-                to discover fishing spots nearby.
-              </Text>
-            </>
-          )}
+          <Text style={styles.placeholderTitle}>Find Your Water</Text>
+          <Text style={styles.placeholderText}>
+            Search for a river or lake by name, or tap "Find Waters Near Me"
+            to discover fishing spots nearby.
+          </Text>
         </View>
       )}
     </SafeAreaView>
@@ -451,5 +556,109 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  // No results / External search styles
+  noResultsContainer: {
+    flex: 1,
+  },
+  noResultsContent: {
+    padding: 16,
+  },
+  noResultsHeader: {
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  noResultsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  noResultsSubtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  externalLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+    backgroundColor: '#f0f0ff',
+    borderRadius: 12,
+  },
+  externalLoadingText: {
+    marginLeft: 12,
+    fontSize: 14,
+    color: '#6366f1',
+  },
+  externalResultsSection: {
+    marginTop: 8,
+  },
+  externalHeader: {
+    marginBottom: 12,
+  },
+  externalTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6366f1',
+    marginBottom: 4,
+  },
+  externalDescription: {
+    fontSize: 13,
+    color: '#6b7280',
+    lineHeight: 18,
+  },
+  externalList: {
+    gap: 8,
+  },
+  externalWaterCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#c7d2fe',
+    borderStyle: 'dashed',
+  },
+  externalNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  externalBadge: {
+    backgroundColor: '#e0e7ff',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  externalBadgeText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#4f46e5',
+    textTransform: 'uppercase',
+  },
+  externalHint: {
+    fontSize: 12,
+    color: '#6366f1',
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  noExternalResults: {
+    alignItems: 'center',
+    padding: 24,
+    backgroundColor: '#f9fafb',
+    borderRadius: 12,
+  },
+  noExternalText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noExternalHint: {
+    fontSize: 13,
+    color: '#9ca3af',
+    textAlign: 'center',
   },
 });

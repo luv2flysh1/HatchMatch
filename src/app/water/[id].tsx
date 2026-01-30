@@ -17,6 +17,7 @@ import { useWaterStore } from '../../stores/waterStore';
 import { useRecommendationStore, FishingReport } from '../../stores/recommendationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useFlyBoxStore } from '../../stores/flyBoxStore';
+import { getRegulationsUrl, hasRegulationsInfo } from '../../utils/fishingRegulations';
 import type { FlyRecommendation } from '../../types/database';
 
 export default function WaterDetailScreen() {
@@ -102,6 +103,17 @@ export default function WaterDetailScreen() {
     });
   }, [selectedWater]);
 
+  const handleViewRegulations = useCallback(() => {
+    if (!selectedWater?.state) return;
+
+    const regulationsUrl = getRegulationsUrl(selectedWater.state);
+    if (regulationsUrl) {
+      Linking.openURL(regulationsUrl).catch((err) => {
+        console.error('Failed to open regulations URL:', err);
+      });
+    }
+  }, [selectedWater]);
+
   const handleCreateBoxForMe = useCallback(() => {
     if (!selectedWater || recommendations.length === 0) return;
 
@@ -181,6 +193,13 @@ export default function WaterDetailScreen() {
           <Pressable style={styles.directionsButton} onPress={handleGetDirections}>
             <Text style={styles.directionsButtonText}>Get Directions</Text>
           </Pressable>
+          {selectedWater.state && hasRegulationsInfo(selectedWater.state) && (
+            <Pressable style={styles.regulationsButton} onPress={handleViewRegulations}>
+              <Text style={styles.regulationsButtonText}>
+                View {selectedWater.state} Fishing Regulations
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         {/* Fishing Report Section */}
@@ -492,6 +511,23 @@ const styles = StyleSheet.create({
   },
   directionsButtonText: {
     color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  regulationsButton: {
+    marginTop: 10,
+    backgroundColor: '#fef3c7',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  regulationsButtonText: {
+    color: '#92400e',
     fontSize: 15,
     fontWeight: '600',
   },
