@@ -48,13 +48,32 @@ serve(async (req: Request) => {
       );
     }
 
-    const trimmedQuery = query.trim();
+    let trimmedQuery = query.trim();
+    let searchState = state;
 
-    // Search multiple sources in parallel
-    const [usgsResults, gnisResults] = await Promise.all([
-      searchUSGSSites(trimmedQuery, state, limit),
-      searchGNIS(trimmedQuery, state, limit),
-    ]);
+    // Try to extract state from query (e.g., "Cle Elum WA" or "Cle Elum, WA")
+    if (!searchState) {
+      const stateMatch = trimmedQuery.match(/[,\s]+([A-Z]{2})$/i);
+      if (stateMatch) {
+        searchState = stateMatch[1].toUpperCase();
+        trimmedQuery = trimmedQuery.replace(/[,\s]+[A-Z]{2}$/i, '').trim();
+      }
+    }
+
+    // If still no state, search common fly fishing states in parallel
+    let usgsResults: ExternalWaterBody[] = [];
+    if (searchState) {
+      usgsResults = await searchUSGSSites(trimmedQuery, searchState, limit);
+    } else {
+      // Search popular fly fishing states
+      const commonStates = ['WA', 'MT', 'ID', 'CO', 'WY', 'OR', 'CA', 'UT', 'AK', 'PA', 'NY'];
+      const stateSearches = await Promise.all(
+        commonStates.slice(0, 5).map(s => searchUSGSSites(trimmedQuery, s, Math.ceil(limit / 3)))
+      );
+      usgsResults = stateSearches.flat();
+    }
+
+    const gnisResults = await searchGNIS(trimmedQuery, searchState, limit);
 
     // Combine and deduplicate results
     const allResults = [...usgsResults, ...gnisResults];
@@ -170,11 +189,20 @@ function parseUSGSResponse(rdbText: string, limit: number): ExternalWaterBody[] 
     // Map USGS site type codes to our water types
     const waterType = mapUSGSSiteType(siteType);
 
+    // Extract state from station name if not in state_cd (e.g., "... NEAR ROSLYN, WA")
+    let stateAbbr = stateCodeToAbbr(stateCode) || '';
+    if (!stateAbbr) {
+      const stateMatch = siteName.match(/,\s*([A-Z]{2})$/);
+      if (stateMatch) {
+        stateAbbr = stateMatch[1];
+      }
+    }
+
     results.push({
       id: `usgs-${siteNo}`,
       name: formatSiteName(siteName),
       type: waterType,
-      state: stateCodeToAbbr(stateCode) || '',
+      state: stateAbbr,
       county: countyCode,
       latitude: lat,
       longitude: lon,
