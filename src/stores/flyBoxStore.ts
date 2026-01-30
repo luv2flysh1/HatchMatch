@@ -1,6 +1,5 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { create, StateCreator } from 'zustand';
+import { persist, createJSONStorage, PersistOptions } from 'zustand/middleware';
 
 export interface FlyBoxItem {
   id: string;
@@ -111,8 +110,12 @@ export const useFlyBoxStore = create<FlyBoxState>()(
     }),
     {
       name: 'fly-box-storage',
-      storage: createJSONStorage(() => AsyncStorage),
-    }
+      // Only persist in non-test environments
+      storage: typeof jest === 'undefined'
+        ? createJSONStorage(() => require('@react-native-async-storage/async-storage').default)
+        : undefined,
+      skipHydration: typeof jest !== 'undefined',
+    } as PersistOptions<FlyBoxState>
   )
 );
 
