@@ -27,6 +27,7 @@ export default function SearchScreen() {
   const [lastNearbySearch, setLastNearbySearch] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [externalSearchAttempted, setExternalSearchAttempted] = useState(false);
 
   const {
     searchResults,
@@ -53,6 +54,7 @@ export default function SearchScreen() {
   const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
     setLastNearbySearch(false);
+    setExternalSearchAttempted(false); // Reset when query changes
     if (text.trim().length >= 2) {
       searchByName(text);
     } else if (text.trim().length === 0) {
@@ -87,16 +89,17 @@ export default function SearchScreen() {
       !isSearching &&
       searchResults.length === 0 &&
       lastSearchQuery.length >= 2 &&
-      externalResults.length === 0 &&
+      !externalSearchAttempted &&
       !isSearchingExternal
     ) {
       // Small delay to avoid rapid API calls during typing
       const timer = setTimeout(() => {
+        setExternalSearchAttempted(true);
         searchExternal(lastSearchQuery);
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [isSearching, searchResults.length, lastSearchQuery, externalResults.length, isSearchingExternal, searchExternal]);
+  }, [isSearching, searchResults.length, lastSearchQuery, externalSearchAttempted, isSearchingExternal, searchExternal]);
 
   const handleExternalWaterPress = useCallback(async (water: ExternalWaterBody) => {
     Alert.alert(
