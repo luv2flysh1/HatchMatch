@@ -2,10 +2,19 @@ import { create } from 'zustand';
 import { supabase } from '../services/supabase';
 import type { FlyRecommendation } from '../types/database';
 
+export interface FishingReport {
+  source_name: string;
+  report_date: string;
+  effectiveness_notes: string;
+  extracted_flies: string[];
+  conditions: Record<string, any>;
+}
+
 interface RecommendationState {
   // Data
   recommendations: FlyRecommendation[];
   conditionsSummary: string | null;
+  fishingReport: FishingReport | null;
   lastUpdated: Date | null;
 
   // UI State
@@ -24,6 +33,7 @@ const CACHE_DURATION = 12 * 60 * 60 * 1000;
 export const useRecommendationStore = create<RecommendationState>((set, get) => ({
   recommendations: [],
   conditionsSummary: null,
+  fishingReport: null,
   lastUpdated: null,
   isLoading: false,
   error: null,
@@ -38,7 +48,8 @@ export const useRecommendationStore = create<RecommendationState>((set, get) => 
         if (cached) {
           set({
             recommendations: cached.recommendations,
-            conditionsSummary: cached.conditions_summary,
+            conditionsSummary: cached.conditions_snapshot?.conditions_summary || null,
+            fishingReport: cached.conditions_snapshot?.fishing_report || null,
             lastUpdated: new Date(cached.created_at),
             isLoading: false,
           });
@@ -62,6 +73,7 @@ export const useRecommendationStore = create<RecommendationState>((set, get) => 
       set({
         recommendations: data.recommendations,
         conditionsSummary: data.conditions_summary || null,
+        fishingReport: data.fishing_report || null,
         lastUpdated: new Date(),
         isLoading: false,
       });
@@ -82,6 +94,7 @@ export const useRecommendationStore = create<RecommendationState>((set, get) => 
     set({
       recommendations: [],
       conditionsSummary: null,
+      fishingReport: null,
       lastUpdated: null,
       error: null,
     });
@@ -119,7 +132,7 @@ async function getCachedRecommendations(waterBodyId: string) {
 // Helper: Cache recommendations in Supabase
 async function cacheRecommendations(
   waterBodyId: string,
-  data: { recommendations: FlyRecommendation[]; conditions_summary?: string }
+  data: { recommendations: FlyRecommendation[]; conditions_summary?: string; fishing_report?: FishingReport | null }
 ) {
   const today = new Date().toISOString().split('T')[0];
   const expiresAt = new Date(Date.now() + CACHE_DURATION).toISOString();
@@ -130,7 +143,10 @@ async function cacheRecommendations(
       water_body_id: waterBodyId,
       date: today,
       recommendations: data.recommendations,
-      conditions_snapshot: { conditions_summary: data.conditions_summary },
+      conditions_snapshot: {
+        conditions_summary: data.conditions_summary,
+        fishing_report: data.fishing_report,
+      },
       expires_at: expiresAt,
     }, {
       onConflict: 'water_body_id,date',

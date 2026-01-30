@@ -155,7 +155,9 @@ src/
 
 ```
 supabase/functions/
-├── get-recommendations/    # AI fly recommendations
+├── get-recommendations/    # AI fly recommendations with fishing report integration
+│   └── index.ts
+├── scrape-fishing-report/  # Dynamic fly shop discovery and report scraping
 │   └── index.ts
 ├── search-water-bodies/    # Geospatial + text search
 │   └── index.ts
@@ -281,7 +283,8 @@ Monthly projections (using Haiku):
    ├── Weather API → current + forecast
    ├── USGS API → flow rate, water temp
    ├── Hatch chart data from database
-   └── Recent catch reports from database
+   ├── Recent catch reports from database
+   └── Fly shop fishing reports (calls scrape-fishing-report)
                     │
                     ▼
 5. Edge Function builds Claude prompt with all context
@@ -308,6 +311,47 @@ Monthly projections (using Haiku):
                     │
                     ▼
 8. App displays recommendations to user
+```
+
+### Getting Fishing Reports (Scrape Flow)
+
+```
+1. get-recommendations calls scrape-fishing-report
+                    │
+                    ▼
+2. Check fishing_reports cache
+   ├── If valid cache exists (< 3 days old) → Return cached report
+   └── If no cache or expired → Continue to step 3
+                    │
+                    ▼
+3. Query fly_shop_sources for shops covering this water body
+   ├── If known sources exist → Scrape from ALL matching shops
+   └── If no sources → Use Claude to discover shops
+                    │
+                    ▼
+4. For each shop (parallel):
+   ├── Fetch HTML from reports_url
+   ├── Extract text content
+   └── Call Claude to extract:
+       - Report date
+       - Effective flies
+       - Water conditions
+       - Summary notes
+                    │
+                    ▼
+5. Filter reports by date (MAX_REPORT_AGE_DAYS = 14)
+   └── Skip any reports older than 2 weeks
+                    │
+                    ▼
+6. Aggregate results:
+   ├── If single source → Use as-is
+   └── If multiple sources → Claude summarizes into cohesive report
+                    │
+                    ▼
+7. Cache aggregated report in fishing_reports (expires in 3 days)
+                    │
+                    ▼
+8. Return report to get-recommendations for inclusion in AI prompt
 ```
 
 ### Trip Auto-Refresh (Premium)
@@ -397,6 +441,21 @@ Monthly projections (using Haiku):
 │ conditions       │
 │ expires_at       │
 └──────────────────┘
+
+┌──────────────────┐       ┌──────────────────┐
+│ fly_shop_sources │       │ fishing_reports  │
+├──────────────────┤       ├──────────────────┤
+│ id (PK)          │       │ id (PK)          │
+│ name             │       │ water_body_id(FK)│
+│ website          │       │ water_body_name  │
+│ reports_url      │       │ source_name      │
+│ state            │       │ source_url       │
+│ waters_covered[] │       │ report_date      │
+│ is_active        │       │ extracted_flies[]│
+│ last_scrape      │       │ conditions       │
+└──────────────────┘       │ effectiveness    │
+                           │ expires_at       │
+                           └──────────────────┘
 ```
 
 ---
@@ -582,6 +641,46 @@ Monthly projections (using Haiku):
 
 **Indexes:**
 - `idx_recommendation_cache_expires` - B-tree on expires_at for cleanup
+
+### fly_shop_sources
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | uuid | PK, DEFAULT gen_random_uuid() | Unique identifier |
+| name | varchar(200) | NOT NULL | Fly shop name |
+| website | varchar(500) | | Main website URL |
+| reports_url | varchar(500) | NOT NULL | Direct URL to fishing reports |
+| state | varchar(2) | NOT NULL | US state abbreviation |
+| waters_covered | text[] | DEFAULT '{}' | Array of water body names this shop reports on |
+| is_active | boolean | DEFAULT true | Whether to include in scraping |
+| last_successful_scrape | timestamptz | | Last successful scrape timestamp |
+| created_at | timestamptz | DEFAULT now() | Record creation |
+
+**Indexes:**
+- `idx_fly_shop_sources_state` - B-tree on state
+- `idx_fly_shop_sources_waters` - GIN on waters_covered for array queries
+
+### fishing_reports
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | uuid | PK, DEFAULT gen_random_uuid() | Unique identifier |
+| water_body_id | uuid | FK → water_bodies.id | Water body (nullable) |
+| water_body_name | varchar(200) | NOT NULL | Water body name for matching |
+| source_name | varchar(200) | NOT NULL | Shop name or "N fly shops" |
+| source_url | varchar(500) | | Primary source URL |
+| report_date | date | | Date of the report (extracted) |
+| report_text | jsonb | | JSON array of sources with URLs |
+| extracted_flies | text[] | DEFAULT '{}' | Fly patterns mentioned |
+| extracted_conditions | jsonb | DEFAULT '{}' | Water temp, clarity, level |
+| effectiveness_notes | text | | Summary of what's working |
+| scraped_at | timestamptz | DEFAULT now() | When scraped |
+| expires_at | timestamptz | NOT NULL | Cache expiration (3 days) |
+| created_at | timestamptz | DEFAULT now() | Record creation |
+
+**Indexes:**
+- `idx_fishing_reports_water_body` - B-tree on water_body_name
+- `idx_fishing_reports_expires` - B-tree on expires_at for cache cleanup
 
 ---
 

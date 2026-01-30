@@ -1,6 +1,6 @@
 // Recommendation Store Tests
 
-import { useRecommendationStore } from '../../stores/recommendationStore';
+import { useRecommendationStore, FishingReport } from '../../stores/recommendationStore';
 import type { FlyRecommendation } from '../../types/database';
 
 // Mock Supabase
@@ -56,11 +56,26 @@ const mockRecommendations: FlyRecommendation[] = [
   },
 ];
 
+const mockFishingReport: FishingReport = {
+  source_name: '2 fly shops',
+  report_date: '2026-01-28T00:00:00Z',
+  effectiveness_notes: 'Fishing has been excellent with midges in the morning and BWOs in the afternoon.',
+  extracted_flies: ['Zebra Midge', 'RS2', 'Baetis', 'Pheasant Tail'],
+  conditions: {
+    water_temp: '42°F',
+    water_clarity: 'clear',
+    water_level: 'normal',
+  },
+};
+
 const mockCachedData = {
   water_body_id: 'water-1',
   date: new Date().toISOString().split('T')[0],
   recommendations: mockRecommendations,
-  conditions_summary: 'Clear skies, 65°F',
+  conditions_snapshot: {
+    conditions_summary: 'Clear skies, 65°F',
+    fishing_report: mockFishingReport,
+  },
   created_at: new Date().toISOString(),
   expires_at: new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString(), // 12 hours from now
 };
@@ -71,6 +86,7 @@ describe('recommendationStore', () => {
     useRecommendationStore.setState({
       recommendations: [],
       conditionsSummary: null,
+      fishingReport: null,
       lastUpdated: null,
       isLoading: false,
       error: null,
@@ -84,6 +100,7 @@ describe('recommendationStore', () => {
 
       expect(state.recommendations).toEqual([]);
       expect(state.conditionsSummary).toBeNull();
+      expect(state.fishingReport).toBeNull();
       expect(state.lastUpdated).toBeNull();
       expect(state.isLoading).toBe(false);
       expect(state.error).toBeNull();
@@ -218,6 +235,7 @@ describe('recommendationStore', () => {
       useRecommendationStore.setState({
         recommendations: mockRecommendations,
         conditionsSummary: 'Some conditions',
+        fishingReport: mockFishingReport,
         lastUpdated: new Date(),
         error: 'Some error',
       });
@@ -228,8 +246,149 @@ describe('recommendationStore', () => {
       const state = useRecommendationStore.getState();
       expect(state.recommendations).toEqual([]);
       expect(state.conditionsSummary).toBeNull();
+      expect(state.fishingReport).toBeNull();
       expect(state.lastUpdated).toBeNull();
       expect(state.error).toBeNull();
+    });
+  });
+
+  describe('fishing report handling', () => {
+    it('should store fishing report from Edge Function response', async () => {
+      // Mock cache miss
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      });
+
+      // Mock Edge Function response with fishing report
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: {
+          recommendations: mockRecommendations,
+          conditions_summary: 'Clear skies, 65°F',
+          fishing_report: mockFishingReport,
+        },
+        error: null,
+      });
+
+      const { getRecommendations } = useRecommendationStore.getState();
+      await getRecommendations('water-1');
+
+      const state = useRecommendationStore.getState();
+      expect(state.fishingReport).toEqual(mockFishingReport);
+      expect(state.fishingReport?.source_name).toBe('2 fly shops');
+      expect(state.fishingReport?.extracted_flies).toContain('Zebra Midge');
+    });
+
+    it('should handle null fishing report gracefully', async () => {
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      });
+
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: {
+          recommendations: mockRecommendations,
+          conditions_summary: 'Clear skies',
+          fishing_report: null, // No fishing report available
+        },
+        error: null,
+      });
+
+      const { getRecommendations } = useRecommendationStore.getState();
+      await getRecommendations('water-1');
+
+      const state = useRecommendationStore.getState();
+      expect(state.fishingReport).toBeNull();
+      expect(state.recommendations).toEqual(mockRecommendations);
+    });
+
+    it('should load fishing report from cache', async () => {
+      // Mock cache hit with fishing report
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: mockCachedData, error: null }),
+      });
+
+      const { getRecommendations } = useRecommendationStore.getState();
+      await getRecommendations('water-1');
+
+      // Should NOT call Edge Function when cache is valid
+      expect(supabase.functions.invoke).not.toHaveBeenCalled();
+
+      const state = useRecommendationStore.getState();
+      expect(state.fishingReport).toEqual(mockFishingReport);
+    });
+
+    it('should validate fishing report structure', async () => {
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      });
+
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: {
+          recommendations: mockRecommendations,
+          fishing_report: mockFishingReport,
+        },
+        error: null,
+      });
+
+      const { getRecommendations } = useRecommendationStore.getState();
+      await getRecommendations('water-1');
+
+      const state = useRecommendationStore.getState();
+      const report = state.fishingReport;
+
+      // Validate structure
+      expect(report).toHaveProperty('source_name');
+      expect(report).toHaveProperty('report_date');
+      expect(report).toHaveProperty('effectiveness_notes');
+      expect(report).toHaveProperty('extracted_flies');
+      expect(report).toHaveProperty('conditions');
+
+      // Validate types
+      expect(typeof report?.source_name).toBe('string');
+      expect(Array.isArray(report?.extracted_flies)).toBe(true);
+      expect(typeof report?.conditions).toBe('object');
+    });
+
+    it('should handle multi-source fishing report', async () => {
+      const multiSourceReport: FishingReport = {
+        source_name: '3 fly shops',
+        report_date: '2026-01-30T00:00:00Z',
+        effectiveness_notes: 'Combined report from multiple sources.',
+        extracted_flies: ['BWO', 'Midge', 'Scud', 'Pheasant Tail', 'RS2'],
+        conditions: {
+          water_temp: '45°F',
+          water_clarity: 'slightly off',
+          water_level: 'high',
+        },
+      };
+
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        single: jest.fn().mockResolvedValue({ data: null, error: null }),
+      });
+
+      (supabase.functions.invoke as jest.Mock).mockResolvedValue({
+        data: {
+          recommendations: mockRecommendations,
+          fishing_report: multiSourceReport,
+        },
+        error: null,
+      });
+
+      const { getRecommendations } = useRecommendationStore.getState();
+      await getRecommendations('water-1');
+
+      const state = useRecommendationStore.getState();
+      expect(state.fishingReport?.source_name).toBe('3 fly shops');
+      expect(state.fishingReport?.extracted_flies.length).toBe(5);
     });
   });
 

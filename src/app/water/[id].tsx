@@ -7,13 +7,16 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWaterStore } from '../../stores/waterStore';
-import { useRecommendationStore } from '../../stores/recommendationStore';
+import { useRecommendationStore, FishingReport } from '../../stores/recommendationStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useFlyBoxStore } from '../../stores/flyBoxStore';
 import type { FlyRecommendation } from '../../types/database';
 
 export default function WaterDetailScreen() {
@@ -31,6 +34,7 @@ export default function WaterDetailScreen() {
   const {
     recommendations,
     conditionsSummary,
+    fishingReport,
     lastUpdated,
     isLoading: isLoadingRecs,
     error: recsError,
@@ -38,9 +42,12 @@ export default function WaterDetailScreen() {
     clearRecommendations,
   } = useRecommendationStore();
 
+  const { addFly, isInBox } = useFlyBoxStore();
+
   const [isFav, setIsFav] = useState(false);
   const [isTogglingFav, setIsTogglingFav] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [boxCreated, setBoxCreated] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -75,6 +82,54 @@ export default function WaterDetailScreen() {
     setIsFav(isFavorite(id));
     setIsTogglingFav(false);
   };
+
+  const handleGetDirections = useCallback(() => {
+    if (!selectedWater) return;
+
+    const { latitude, longitude, name } = selectedWater;
+    const encodedName = encodeURIComponent(name);
+
+    // Use platform-specific URL schemes for best native experience
+    const url = Platform.select({
+      ios: `http://maps.apple.com/?ll=${latitude},${longitude}&q=${encodedName}`,
+      android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodedName})`,
+      default: `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`,
+    });
+
+    Linking.openURL(url).catch(() => {
+      // Fallback to Google Maps web URL if native scheme fails
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`);
+    });
+  }, [selectedWater]);
+
+  const handleCreateBoxForMe = useCallback(() => {
+    if (!selectedWater || recommendations.length === 0) return;
+
+    // Add top recommendations with sensible quantities based on confidence
+    const topFlies = recommendations.slice(0, 6);
+    topFlies.forEach((fly) => {
+      const quantity = fly.confidence >= 80 ? 3 : fly.confidence >= 60 ? 2 : 1;
+      addFly({
+        flyName: fly.fly_name,
+        flyType: fly.fly_type,
+        size: fly.size,
+        quantity,
+        addedFrom: selectedWater.name,
+      });
+    });
+    setBoxCreated(true);
+  }, [selectedWater, recommendations, addFly]);
+
+  const handleAddFlyToBox = useCallback((fly: FlyRecommendation) => {
+    if (!selectedWater) return;
+    addFly({
+      flyName: fly.fly_name,
+      flyType: fly.fly_type,
+      size: fly.size,
+      quantity: 1,
+      addedFrom: selectedWater.name,
+    });
+  }, [selectedWater, addFly]);
 
   if (isLoadingWater) {
     return (
@@ -123,7 +178,63 @@ export default function WaterDetailScreen() {
           {selectedWater.description && (
             <Text style={styles.description}>{selectedWater.description}</Text>
           )}
+          <Pressable style={styles.directionsButton} onPress={handleGetDirections}>
+            <Text style={styles.directionsButtonText}>Get Directions</Text>
+          </Pressable>
         </View>
+
+        {/* Fishing Report Section */}
+        {fishingReport && (
+          <View style={styles.fishingReportSection}>
+            <View style={styles.fishingReportHeader}>
+              <Text style={styles.fishingReportTitle}>Current Fishing Report</Text>
+              <Text style={styles.fishingReportSource}>
+                From {fishingReport.source_name}
+              </Text>
+            </View>
+            {fishingReport.effectiveness_notes && (
+              <Text style={styles.fishingReportNotes}>
+                {fishingReport.effectiveness_notes}
+              </Text>
+            )}
+            {fishingReport.extracted_flies && fishingReport.extracted_flies.length > 0 && (
+              <View style={styles.fishingReportFlies}>
+                <Text style={styles.fishingReportFliesLabel}>Hot Flies:</Text>
+                <Text style={styles.fishingReportFliesList}>
+                  {fishingReport.extracted_flies.join(', ')}
+                </Text>
+              </View>
+            )}
+            {fishingReport.conditions && Object.keys(fishingReport.conditions).length > 0 && (
+              <View style={styles.fishingReportConditions}>
+                {fishingReport.conditions.water_temp && (
+                  <View style={styles.conditionChip}>
+                    <Text style={styles.conditionChipText}>
+                      Water: {fishingReport.conditions.water_temp}
+                    </Text>
+                  </View>
+                )}
+                {fishingReport.conditions.water_clarity && (
+                  <View style={styles.conditionChip}>
+                    <Text style={styles.conditionChipText}>
+                      {fishingReport.conditions.water_clarity}
+                    </Text>
+                  </View>
+                )}
+                {fishingReport.conditions.water_level && (
+                  <View style={styles.conditionChip}>
+                    <Text style={styles.conditionChipText}>
+                      {fishingReport.conditions.water_level}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+            <Text style={styles.fishingReportDate}>
+              Updated {formatReportDate(fishingReport.report_date)}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -160,9 +271,26 @@ export default function WaterDetailScreen() {
               </Pressable>
             </View>
           ) : recommendations.length > 0 ? (
-            recommendations.map((fly, index) => (
-              <FlyCard key={fly.fly_id || index} fly={fly} rank={index + 1} />
-            ))
+            <>
+              <Pressable
+                style={[styles.createBoxButton, boxCreated && styles.createBoxButtonDone]}
+                onPress={handleCreateBoxForMe}
+                disabled={boxCreated}
+              >
+                <Text style={[styles.createBoxButtonText, boxCreated && styles.createBoxButtonTextDone]}>
+                  {boxCreated ? 'Added to Fly Box' : 'Create Box for Me'}
+                </Text>
+              </Pressable>
+              {recommendations.map((fly, index) => (
+                <FlyCard
+                  key={fly.fly_id || index}
+                  fly={fly}
+                  rank={index + 1}
+                  onAddToBox={() => handleAddFlyToBox(fly)}
+                  isInBox={isInBox(fly.fly_name, fly.size)}
+                />
+              ))}
+            </>
           ) : (
             <Text style={styles.noRecs}>
               No recommendations available. Pull down to refresh.
@@ -194,7 +322,17 @@ export default function WaterDetailScreen() {
 }
 
 // Fly recommendation card component
-function FlyCard({ fly, rank }: { fly: FlyRecommendation; rank: number }) {
+function FlyCard({
+  fly,
+  rank,
+  onAddToBox,
+  isInBox,
+}: {
+  fly: FlyRecommendation;
+  rank: number;
+  onAddToBox: () => void;
+  isInBox: boolean;
+}) {
   return (
     <View style={styles.flyCard}>
       <View style={styles.flyHeader}>
@@ -235,9 +373,19 @@ function FlyCard({ fly, rank }: { fly: FlyRecommendation; rank: number }) {
         </View>
       </View>
       <Text style={styles.flyReasoning}>{fly.reasoning}</Text>
-      <View style={styles.flyTechnique}>
-        <Text style={styles.techniqueLabel}>Technique:</Text>
-        <Text style={styles.techniqueValue}>{fly.technique}</Text>
+      <View style={styles.flyCardFooter}>
+        <View style={styles.flyTechnique}>
+          <Text style={styles.techniqueLabel}>Technique:</Text>
+          <Text style={styles.techniqueValue}>{fly.technique}</Text>
+        </View>
+        <Pressable
+          style={[styles.addToBoxButton, isInBox && styles.addToBoxButtonDone]}
+          onPress={onAddToBox}
+        >
+          <Text style={[styles.addToBoxButtonText, isInBox && styles.addToBoxButtonTextDone]}>
+            {isInBox ? 'In Box' : '+ Add'}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -259,6 +407,23 @@ function formatLastUpdated(date: Date): string {
   if (diffHours < 24) return `${diffHours}h ago`;
 
   return date.toLocaleDateString();
+}
+
+function formatReportDate(dateString: string): string {
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return 'yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return date.toLocaleDateString();
+  } catch {
+    return 'recently';
+  }
 }
 
 const styles = StyleSheet.create({
@@ -314,6 +479,21 @@ const styles = StyleSheet.create({
     color: '#4b5563',
     marginTop: 12,
     lineHeight: 20,
+  },
+  directionsButton: {
+    marginTop: 16,
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  directionsButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
   },
   section: {
     padding: 16,
@@ -473,12 +653,18 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginBottom: 8,
   },
-  flyTechnique: {
+  flyCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#f3f4f6',
+  },
+  flyTechnique: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   techniqueLabel: {
     fontSize: 12,
@@ -489,6 +675,44 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#111827',
     fontWeight: '500',
+  },
+  addToBoxButton: {
+    backgroundColor: '#f0fdf4',
+    borderWidth: 1,
+    borderColor: '#86efac',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  addToBoxButtonDone: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#22c55e',
+  },
+  addToBoxButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#16a34a',
+  },
+  addToBoxButtonTextDone: {
+    color: '#15803d',
+  },
+  createBoxButton: {
+    backgroundColor: '#2563eb',
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  createBoxButtonDone: {
+    backgroundColor: '#dcfce7',
+  },
+  createBoxButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  createBoxButtonTextDone: {
+    color: '#16a34a',
   },
   actions: {
     padding: 16,
@@ -526,5 +750,72 @@ const styles = StyleSheet.create({
   },
   favoriteButtonTextActive: {
     color: '#ffffff',
+  },
+  // Fishing Report Styles
+  fishingReportSection: {
+    backgroundColor: '#eff6ff',
+    margin: 16,
+    marginBottom: 0,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+  },
+  fishingReportHeader: {
+    marginBottom: 12,
+  },
+  fishingReportTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e40af',
+  },
+  fishingReportSource: {
+    fontSize: 12,
+    color: '#3b82f6',
+    marginTop: 2,
+  },
+  fishingReportNotes: {
+    fontSize: 14,
+    color: '#1e3a5f',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  fishingReportFlies: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  fishingReportFliesLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1e40af',
+    marginRight: 6,
+  },
+  fishingReportFliesList: {
+    fontSize: 13,
+    color: '#1e3a5f',
+    flex: 1,
+  },
+  fishingReportConditions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  conditionChip: {
+    backgroundColor: '#dbeafe',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  conditionChipText: {
+    fontSize: 12,
+    color: '#1e40af',
+    fontWeight: '500',
+  },
+  fishingReportDate: {
+    fontSize: 11,
+    color: '#6b7280',
   },
 });

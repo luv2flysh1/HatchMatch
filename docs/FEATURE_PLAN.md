@@ -28,7 +28,7 @@
 **Data Sources for Fly Recommendations:**
 1. AI/ML predictions based on conditions (water temp, hatch charts, season, weather)
 2. User-reported catch data and community reports
-3. Aggregated fishing reports from guides/shops
+3. ✅ **Aggregated fishing reports from fly shops** (implemented - multi-source scraping with 14-day freshness filter)
 4. Future: Direct partnerships with local fly shops and fishing guides
 
 ---
@@ -129,12 +129,27 @@ AI-generated recommendations based on:
 - Weather conditions (current + forecast)
 - Water type (river vs lake, freestone vs tailwater)
 - Target species
+- ✅ **Real-time fly shop fishing reports** (aggregated from multiple sources)
 
 Display for each recommended fly:
 - Fly name and image
 - Size range
 - Confidence level / reasoning
 - Technique tips (dry, nymph, streamer, etc.)
+
+#### ✅ Fishing Report Integration (Implemented)
+Before fly recommendations, display current fishing report summary:
+- Source attribution (single shop or "N fly shops")
+- Effectiveness notes from local experts
+- Hot flies currently working
+- Water conditions (temp, clarity, level)
+- Report freshness indicator (only shows reports < 14 days old)
+
+Features:
+- Dynamic fly shop discovery using Claude AI
+- Multi-source aggregation for comprehensive intel
+- 3-day caching to reduce API calls
+- Automatic filtering of outdated reports
 
 ### 4. Single Trip Planning
 - Create a trip with:

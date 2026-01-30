@@ -531,3 +531,230 @@ Deno.test('Integration - recommendation flow produces valid output', () => {
   assertEquals(recommendations[0].fly_id, 'fly-1'); // Mapped from mockFlies
   assertGreater(recommendations[0].confidence, recommendations[4].confidence);
 });
+
+// ============================================
+// Tests: Catch Report Aggregation
+// ============================================
+
+interface CatchReportSummary {
+  totalReports: number;
+  topFlies: Array<{
+    flyName: string;
+    flyType: string;
+    reportCount: number;
+    avgEffectiveness: number;
+  }>;
+  recentConditions: string[];
+  recentNotes: string[];
+}
+
+function aggregateCatchReports(reports: any[]): CatchReportSummary {
+  if (!reports || reports.length === 0) {
+    return {
+      totalReports: 0,
+      topFlies: [],
+      recentConditions: [],
+      recentNotes: [],
+    };
+  }
+
+  const flyStats: Record<string, { count: number; totalEffectiveness: number; flyType: string }> = {};
+  const conditions: string[] = [];
+  const notes: string[] = [];
+
+  for (const report of reports) {
+    const flyName = report.flies?.name;
+    const flyType = report.flies?.type;
+
+    if (flyName) {
+      if (!flyStats[flyName]) {
+        flyStats[flyName] = { count: 0, totalEffectiveness: 0, flyType: flyType || 'unknown' };
+      }
+      flyStats[flyName].count++;
+      if (report.effectiveness) {
+        flyStats[flyName].totalEffectiveness += report.effectiveness;
+      }
+    }
+
+    if (report.conditions) {
+      const condStr = formatConditions(report.conditions);
+      if (condStr && !conditions.includes(condStr)) {
+        conditions.push(condStr);
+      }
+    }
+
+    if (report.notes && notes.length < 5) {
+      notes.push(report.notes.slice(0, 100));
+    }
+  }
+
+  const topFlies = Object.entries(flyStats)
+    .map(([flyName, stats]) => ({
+      flyName,
+      flyType: stats.flyType,
+      reportCount: stats.count,
+      avgEffectiveness: stats.count > 0 ? stats.totalEffectiveness / stats.count : 0,
+    }))
+    .sort((a, b) => {
+      const scoreA = a.avgEffectiveness * Math.log(a.reportCount + 1);
+      const scoreB = b.avgEffectiveness * Math.log(b.reportCount + 1);
+      return scoreB - scoreA;
+    })
+    .slice(0, 10);
+
+  return {
+    totalReports: reports.length,
+    topFlies,
+    recentConditions: conditions.slice(0, 5),
+    recentNotes: notes,
+  };
+}
+
+function formatConditions(conditions: Record<string, any>): string {
+  const parts: string[] = [];
+  if (conditions.weather) parts.push(`weather: ${conditions.weather}`);
+  if (conditions.water_temp) parts.push(`water temp: ${conditions.water_temp}°F`);
+  if (conditions.water_clarity) parts.push(`clarity: ${conditions.water_clarity}`);
+  if (conditions.water_level) parts.push(`level: ${conditions.water_level}`);
+  return parts.join(', ');
+}
+
+const mockCatchReports = [
+  {
+    fly_id: 'fly-1',
+    effectiveness: 5,
+    caught_at: '2026-01-15T10:00:00Z',
+    conditions: { weather: 'cloudy', water_temp: 50, water_clarity: 'clear' },
+    notes: 'Great fishing day! Scuds were killing it.',
+    flies: { name: 'Scud', type: 'nymph' },
+  },
+  {
+    fly_id: 'fly-1',
+    effectiveness: 4,
+    caught_at: '2026-01-14T14:00:00Z',
+    conditions: { weather: 'sunny', water_temp: 52 },
+    notes: 'Afternoon bite was good.',
+    flies: { name: 'Scud', type: 'nymph' },
+  },
+  {
+    fly_id: 'fly-2',
+    effectiveness: 3,
+    caught_at: '2026-01-13T09:00:00Z',
+    conditions: { weather: 'overcast', water_clarity: 'slightly murky' },
+    notes: null,
+    flies: { name: 'Zebra Midge', type: 'nymph' },
+  },
+  {
+    fly_id: 'fly-3',
+    effectiveness: 5,
+    caught_at: '2026-01-12T11:00:00Z',
+    conditions: null,
+    notes: 'Midges hatching all morning.',
+    flies: { name: 'Scud', type: 'nymph' },
+  },
+];
+
+Deno.test('aggregateCatchReports - returns empty summary for no reports', () => {
+  const result = aggregateCatchReports([]);
+  assertEquals(result.totalReports, 0);
+  assertEquals(result.topFlies.length, 0);
+  assertEquals(result.recentConditions.length, 0);
+  assertEquals(result.recentNotes.length, 0);
+});
+
+Deno.test('aggregateCatchReports - handles null reports', () => {
+  const result = aggregateCatchReports(null as any);
+  assertEquals(result.totalReports, 0);
+});
+
+Deno.test('aggregateCatchReports - counts total reports correctly', () => {
+  const result = aggregateCatchReports(mockCatchReports);
+  assertEquals(result.totalReports, 4);
+});
+
+Deno.test('aggregateCatchReports - aggregates fly statistics', () => {
+  const result = aggregateCatchReports(mockCatchReports);
+
+  // Scud should have 3 reports
+  const scudStats = result.topFlies.find(f => f.flyName === 'Scud');
+  assertExists(scudStats);
+  assertEquals(scudStats!.reportCount, 3);
+});
+
+Deno.test('aggregateCatchReports - calculates average effectiveness', () => {
+  const result = aggregateCatchReports(mockCatchReports);
+
+  const scudStats = result.topFlies.find(f => f.flyName === 'Scud');
+  assertExists(scudStats);
+  // (5 + 4 + 5) / 3 = 4.67
+  assertGreater(scudStats!.avgEffectiveness, 4.6);
+  assertLessOrEqual(scudStats!.avgEffectiveness, 4.7);
+});
+
+Deno.test('aggregateCatchReports - sorts by weighted score', () => {
+  const result = aggregateCatchReports(mockCatchReports);
+
+  // Scud should be first (3 reports at avg 4.67)
+  assertEquals(result.topFlies[0].flyName, 'Scud');
+});
+
+Deno.test('aggregateCatchReports - collects unique conditions', () => {
+  const result = aggregateCatchReports(mockCatchReports);
+
+  assertGreater(result.recentConditions.length, 0);
+  // Should have entries with weather info
+  assert(result.recentConditions.some(c => c.includes('weather:')));
+});
+
+Deno.test('aggregateCatchReports - limits notes to 5', () => {
+  const manyReports = Array(10).fill(null).map((_, i) => ({
+    flies: { name: 'Test Fly', type: 'dry' },
+    effectiveness: 4,
+    notes: `Note ${i}`,
+    conditions: null,
+    caught_at: '2026-01-15T10:00:00Z',
+  }));
+
+  const result = aggregateCatchReports(manyReports);
+  assertEquals(result.recentNotes.length, 5);
+});
+
+Deno.test('aggregateCatchReports - truncates long notes', () => {
+  const longNoteReport = [{
+    flies: { name: 'Test Fly', type: 'dry' },
+    effectiveness: 4,
+    notes: 'A'.repeat(200),
+    conditions: null,
+    caught_at: '2026-01-15T10:00:00Z',
+  }];
+
+  const result = aggregateCatchReports(longNoteReport);
+  assertEquals(result.recentNotes[0].length, 100);
+});
+
+Deno.test('formatConditions - formats all fields', () => {
+  const conditions = {
+    weather: 'cloudy',
+    water_temp: 50,
+    water_clarity: 'clear',
+    water_level: 'normal',
+  };
+
+  const result = formatConditions(conditions);
+
+  assertEquals(result.includes('weather: cloudy'), true);
+  assertEquals(result.includes('water temp: 50°F'), true);
+  assertEquals(result.includes('clarity: clear'), true);
+  assertEquals(result.includes('level: normal'), true);
+});
+
+Deno.test('formatConditions - handles partial data', () => {
+  const conditions = { weather: 'sunny' };
+  const result = formatConditions(conditions);
+  assertEquals(result, 'weather: sunny');
+});
+
+Deno.test('formatConditions - returns empty for no data', () => {
+  const result = formatConditions({});
+  assertEquals(result, '');
+});

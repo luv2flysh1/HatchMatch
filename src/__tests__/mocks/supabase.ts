@@ -82,6 +82,53 @@ export const mockFlies: Fly[] = [
   },
 ];
 
+// Mock fishing report data
+export const mockFishingReport = {
+  id: 'report-1',
+  water_body_id: 'water-1',
+  water_body_name: 'South Platte River',
+  source_name: '2 fly shops',
+  source_url: 'https://example-flyshop.com/reports',
+  report_date: '2026-01-28',
+  report_text: '[{"name":"Trouts Fly Fishing","url":"https://trouts.com/reports"}]',
+  extracted_flies: ['Zebra Midge', 'RS2', 'Pheasant Tail', 'BWO'],
+  extracted_conditions: {
+    water_temp: '42°F',
+    water_clarity: 'clear',
+    water_level: 'normal',
+  },
+  effectiveness_notes: 'Midges are producing well in the morning. BWO activity in the afternoon.',
+  scraped_at: '2026-01-30T10:00:00Z',
+  expires_at: '2026-02-02T10:00:00Z',
+  created_at: '2026-01-30T10:00:00Z',
+};
+
+// Mock fly shop sources
+export const mockFlyShopSources = [
+  {
+    id: 'shop-1',
+    name: 'Trouts Fly Fishing',
+    website: 'https://trouts.com',
+    reports_url: 'https://trouts.com/fishing-reports',
+    state: 'CO',
+    waters_covered: ['South Platte River', 'Cheesman Canyon'],
+    is_active: true,
+    last_successful_scrape: '2026-01-30T10:00:00Z',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'shop-2',
+    name: 'Reds Fly Shop',
+    website: 'https://redsflyfishing.com',
+    reports_url: 'https://redsflyfishing.com/fishing-reports',
+    state: 'WA',
+    waters_covered: ['Yakima River', 'Rocky Ford Creek'],
+    is_active: true,
+    last_successful_scrape: '2026-01-29T15:00:00Z',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+];
+
 // Helper to create mock Supabase client
 export function createMockSupabaseClient(overrides = {}) {
   return {
@@ -130,6 +177,10 @@ function getMockDataForTable(table: string) {
       return mockWaterBodies;
     case 'flies':
       return mockFlies;
+    case 'fishing_reports':
+      return [mockFishingReport];
+    case 'fly_shop_sources':
+      return mockFlyShopSources;
     default:
       return [];
   }

@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
+import { FlyBoxHeaderButton } from '../../components/FlyBoxHeaderButton';
 
 export default function TabsLayout() {
   return (
@@ -11,6 +12,7 @@ export default function TabsLayout() {
           backgroundColor: '#2563eb',
         },
         headerTintColor: '#ffffff',
+        headerRight: () => <FlyBoxHeaderButton />,
       }}
     >
       <Tabs.Screen
