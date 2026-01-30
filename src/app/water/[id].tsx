@@ -13,11 +13,14 @@ import {
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWaterStore } from '../../stores/waterStore';
 import { useRecommendationStore, FishingReport } from '../../stores/recommendationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useFlyBoxStore } from '../../stores/flyBoxStore';
 import { getRegulationsUrl, hasRegulationsInfo } from '../../utils/fishingRegulations';
+import { colors, gradients, shadows, spacing, borderRadius, layout } from '../../theme';
 import type { FlyRecommendation } from '../../types/database';
 
 export default function WaterDetailScreen() {
@@ -69,13 +72,12 @@ export default function WaterDetailScreen() {
   const handleRefresh = useCallback(async () => {
     if (!id) return;
     setIsRefreshing(true);
-    await getRecommendations(id, true); // Force refresh
+    await getRecommendations(id, true);
     setIsRefreshing(false);
   }, [id, getRecommendations]);
 
   const handleToggleFavorite = async () => {
     if (!user) {
-      // TODO: Prompt to sign in
       return;
     }
     setIsTogglingFav(true);
@@ -90,7 +92,6 @@ export default function WaterDetailScreen() {
     const { latitude, longitude, name } = selectedWater;
     const encodedName = encodeURIComponent(name);
 
-    // Use platform-specific URL schemes for best native experience
     const url = Platform.select({
       ios: `http://maps.apple.com/?ll=${latitude},${longitude}&q=${encodedName}`,
       android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(${encodedName})`,
@@ -98,7 +99,6 @@ export default function WaterDetailScreen() {
     });
 
     Linking.openURL(url).catch(() => {
-      // Fallback to Google Maps web URL if native scheme fails
       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`);
     });
   }, [selectedWater]);
@@ -117,7 +117,6 @@ export default function WaterDetailScreen() {
   const handleCreateBoxForMe = useCallback(() => {
     if (!selectedWater || recommendations.length === 0) return;
 
-    // Add top recommendations with sensible quantities based on confidence
     const topFlies = recommendations.slice(0, 6);
     topFlies.forEach((fly) => {
       const quantity = fly.confidence >= 80 ? 3 : fly.confidence >= 60 ? 2 : 1;
@@ -147,7 +146,9 @@ export default function WaterDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <View style={styles.loadingIconContainer}>
+            <ActivityIndicator size="large" color={colors.primary[500]} />
+          </View>
           <Text style={styles.loadingText}>Loading water body...</Text>
         </View>
       </SafeAreaView>
@@ -158,6 +159,9 @@ export default function WaterDetailScreen() {
     return (
       <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.errorContainer}>
+          <View style={styles.errorIconContainer}>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.error.main} />
+          </View>
           <Text style={styles.errorText}>{waterError || 'Water body not found'}</Text>
         </View>
       </SafeAreaView>
@@ -167,46 +171,97 @@ export default function WaterDetailScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={['#2563eb']}
-            tintColor="#2563eb"
+            colors={[colors.primary[500]]}
+            tintColor={colors.primary[500]}
           />
         }
       >
+        {/* Hero Header */}
         <View style={styles.header}>
-          <Text style={styles.waterName}>{selectedWater.name}</Text>
-          <Text style={styles.waterMeta}>
-            {formatWaterType(selectedWater.type)} • {selectedWater.state}
-            {selectedWater.city && ` • ${selectedWater.city}`}
-          </Text>
-          {selectedWater.species && selectedWater.species.length > 0 && (
-            <Text style={styles.species}>
-              Species: {selectedWater.species.join(', ')}
-            </Text>
-          )}
-          {selectedWater.description && (
-            <Text style={styles.description}>{selectedWater.description}</Text>
-          )}
-          <Pressable style={styles.directionsButton} onPress={handleGetDirections}>
-            <Text style={styles.directionsButtonText}>Get Directions</Text>
+          <LinearGradient
+            colors={gradients.river as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.headerGradient}
+          >
+            <View style={styles.headerContent}>
+              <View style={styles.waterTypeIconContainer}>
+                <MaterialCommunityIcons
+                  name={getWaterTypeIcon(selectedWater.type)}
+                  size={32}
+                  color={colors.text.inverse}
+                />
+              </View>
+              <Text style={styles.waterName}>{selectedWater.name}</Text>
+              <View style={styles.waterMetaRow}>
+                <View style={styles.metaBadge}>
+                  <Text style={styles.metaBadgeText}>{formatWaterType(selectedWater.type)}</Text>
+                </View>
+                <Text style={styles.waterLocation}>
+                  {selectedWater.state}
+                  {selectedWater.city && ` | ${selectedWater.city}`}
+                </Text>
+              </View>
+              {selectedWater.species && selectedWater.species.length > 0 && (
+                <View style={styles.speciesRow}>
+                  <Ionicons name="fish-outline" size={14} color="rgba(255,255,255,0.8)" />
+                  <Text style={styles.speciesText}>
+                    {selectedWater.species.join(', ')}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <Pressable
+            style={({ pressed }) => [
+              styles.quickActionButton,
+              styles.directionsButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={handleGetDirections}
+          >
+            <Ionicons name="navigate" size={20} color={colors.text.inverse} />
+            <Text style={styles.quickActionText}>Directions</Text>
           </Pressable>
           {selectedWater.state && hasRegulationsInfo(selectedWater.state) && (
-            <Pressable style={styles.regulationsButton} onPress={handleViewRegulations}>
-              <Text style={styles.regulationsButtonText}>
-                View {selectedWater.state} Fishing Regulations
-              </Text>
+            <Pressable
+              style={({ pressed }) => [
+                styles.quickActionButton,
+                styles.regulationsButton,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handleViewRegulations}
+            >
+              <Ionicons name="document-text-outline" size={20} color={colors.accent[700]} />
+              <Text style={styles.regulationsButtonText}>Regulations</Text>
             </Pressable>
           )}
         </View>
+
+        {/* Description */}
+        {selectedWater.description && (
+          <View style={styles.descriptionCard}>
+            <Text style={styles.descriptionText}>{selectedWater.description}</Text>
+          </View>
+        )}
 
         {/* Fishing Report Section */}
         {fishingReport && (
           <View style={styles.fishingReportSection}>
             <View style={styles.fishingReportHeader}>
-              <Text style={styles.fishingReportTitle}>Current Fishing Report</Text>
+              <View style={styles.reportTitleRow}>
+                <Ionicons name="newspaper-outline" size={18} color={colors.info.main} />
+                <Text style={styles.fishingReportTitle}>Current Fishing Report</Text>
+              </View>
               <Text style={styles.fishingReportSource}>
                 From {fishingReport.source_name}
               </Text>
@@ -218,7 +273,10 @@ export default function WaterDetailScreen() {
             )}
             {fishingReport.extracted_flies && fishingReport.extracted_flies.length > 0 && (
               <View style={styles.fishingReportFlies}>
-                <Text style={styles.fishingReportFliesLabel}>Hot Flies:</Text>
+                <View style={styles.hotFliesBadge}>
+                  <Ionicons name="flame" size={12} color={colors.warning.main} />
+                  <Text style={styles.hotFliesLabel}>Hot Flies</Text>
+                </View>
                 <Text style={styles.fishingReportFliesList}>
                   {fishingReport.extracted_flies.join(', ')}
                 </Text>
@@ -228,13 +286,15 @@ export default function WaterDetailScreen() {
               <View style={styles.fishingReportConditions}>
                 {fishingReport.conditions.water_temp && (
                   <View style={styles.conditionChip}>
+                    <Ionicons name="thermometer-outline" size={12} color={colors.info.main} />
                     <Text style={styles.conditionChipText}>
-                      Water: {fishingReport.conditions.water_temp}
+                      {fishingReport.conditions.water_temp}
                     </Text>
                   </View>
                 )}
                 {fishingReport.conditions.water_clarity && (
                   <View style={styles.conditionChip}>
+                    <Ionicons name="eye-outline" size={12} color={colors.info.main} />
                     <Text style={styles.conditionChipText}>
                       {fishingReport.conditions.water_clarity}
                     </Text>
@@ -242,6 +302,7 @@ export default function WaterDetailScreen() {
                 )}
                 {fishingReport.conditions.water_level && (
                   <View style={styles.conditionChip}>
+                    <Ionicons name="water-outline" size={12} color={colors.info.main} />
                     <Text style={styles.conditionChipText}>
                       {fishingReport.conditions.water_level}
                     </Text>
@@ -255,21 +316,32 @@ export default function WaterDetailScreen() {
           </View>
         )}
 
+        {/* Fly Recommendations Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>Fly Recommendations</Text>
-              {conditionsSummary && (
-                <Text style={styles.conditionsSummary}>{conditionsSummary}</Text>
-              )}
-              {lastUpdated && (
-                <Text style={styles.lastUpdated}>
-                  Updated {formatLastUpdated(lastUpdated)}
-                </Text>
-              )}
+            <View style={styles.sectionTitleRow}>
+              <MaterialCommunityIcons name="hook" size={20} color={colors.primary[500]} />
+              <View>
+                <Text style={styles.sectionTitle}>Fly Recommendations</Text>
+                {conditionsSummary && (
+                  <Text style={styles.conditionsSummary}>{conditionsSummary}</Text>
+                )}
+                {lastUpdated && (
+                  <Text style={styles.lastUpdated}>
+                    Updated {formatLastUpdated(lastUpdated)}
+                  </Text>
+                )}
+              </View>
             </View>
             {!isLoadingRecs && (
-              <Pressable onPress={handleRefresh} style={styles.refreshButton}>
+              <Pressable
+                onPress={handleRefresh}
+                style={({ pressed }) => [
+                  styles.refreshButton,
+                  pressed && styles.buttonPressed,
+                ]}
+              >
+                <Ionicons name="refresh" size={16} color={colors.primary[500]} />
                 <Text style={styles.refreshButtonText}>Refresh</Text>
               </Pressable>
             )}
@@ -277,28 +349,51 @@ export default function WaterDetailScreen() {
 
           {isLoadingRecs ? (
             <View style={styles.recsLoading}>
-              <ActivityIndicator size="small" color="#2563eb" />
+              <ActivityIndicator size="small" color={colors.primary[500]} />
               <Text style={styles.recsLoadingText}>
                 Getting AI recommendations...
               </Text>
             </View>
           ) : recsError ? (
             <View style={styles.recsError}>
+              <Ionicons name="cloud-offline-outline" size={32} color={colors.error.main} />
               <Text style={styles.recsErrorText}>{recsError}</Text>
-              <Pressable onPress={handleRefresh} style={styles.retryButton}>
+              <Pressable
+                onPress={handleRefresh}
+                style={({ pressed }) => [
+                  styles.retryButton,
+                  pressed && styles.buttonPressed,
+                ]}
+              >
                 <Text style={styles.retryButtonText}>Try Again</Text>
               </Pressable>
             </View>
           ) : recommendations.length > 0 ? (
             <>
               <Pressable
-                style={[styles.createBoxButton, boxCreated && styles.createBoxButtonDone]}
+                style={({ pressed }) => [
+                  styles.createBoxButton,
+                  boxCreated && styles.createBoxButtonDone,
+                  pressed && !boxCreated && styles.buttonPressed,
+                ]}
                 onPress={handleCreateBoxForMe}
                 disabled={boxCreated}
               >
-                <Text style={[styles.createBoxButtonText, boxCreated && styles.createBoxButtonTextDone]}>
-                  {boxCreated ? 'Added to Fly Box' : 'Create Box for Me'}
-                </Text>
+                <LinearGradient
+                  colors={boxCreated ? [colors.success.light, colors.success.light] : gradients.primaryButton as [string, string, ...string[]]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.createBoxButtonGradient}
+                >
+                  <Ionicons
+                    name={boxCreated ? 'checkmark-circle' : 'sparkles'}
+                    size={20}
+                    color={boxCreated ? colors.success.main : colors.text.inverse}
+                  />
+                  <Text style={[styles.createBoxButtonText, boxCreated && styles.createBoxButtonTextDone]}>
+                    {boxCreated ? 'Added to Fly Box' : 'Create Box for Me'}
+                  </Text>
+                </LinearGradient>
               </Pressable>
               {recommendations.map((fly, index) => (
                 <FlyCard
@@ -311,27 +406,55 @@ export default function WaterDetailScreen() {
               ))}
             </>
           ) : (
-            <Text style={styles.noRecs}>
-              No recommendations available. Pull down to refresh.
-            </Text>
+            <View style={styles.noRecsContainer}>
+              <Ionicons name="fish-outline" size={40} color={colors.neutral[300]} />
+              <Text style={styles.noRecs}>
+                No recommendations available. Pull down to refresh.
+              </Text>
+            </View>
           )}
         </View>
 
+        {/* Action Buttons */}
         <View style={styles.actions}>
-          <Pressable style={styles.addToTripButton}>
-            <Text style={styles.addToTripButtonText}>Add to Trip</Text>
+          <Pressable
+            style={({ pressed }) => [
+              styles.addToTripButton,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <LinearGradient
+              colors={gradients.primaryButton as [string, string, ...string[]]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.addToTripButtonGradient}
+            >
+              <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
+              <Text style={styles.addToTripButtonText}>Add to Trip</Text>
+            </LinearGradient>
           </Pressable>
           <Pressable
-            style={[styles.favoriteButton, isFav && styles.favoriteButtonActive]}
+            style={({ pressed }) => [
+              styles.favoriteButton,
+              isFav && styles.favoriteButtonActive,
+              pressed && styles.buttonPressed,
+            ]}
             onPress={handleToggleFavorite}
             disabled={isTogglingFav || !user}
           >
             {isTogglingFav ? (
-              <ActivityIndicator size="small" color={isFav ? '#ffffff' : '#374151'} />
+              <ActivityIndicator size="small" color={isFav ? colors.text.inverse : colors.text.secondary} />
             ) : (
-              <Text style={[styles.favoriteButtonText, isFav && styles.favoriteButtonTextActive]}>
-                {!user ? 'Sign in to Save' : isFav ? 'Saved to Favorites' : 'Save to Favorites'}
-              </Text>
+              <>
+                <Ionicons
+                  name={isFav ? 'heart' : 'heart-outline'}
+                  size={20}
+                  color={isFav ? colors.text.inverse : colors.text.secondary}
+                />
+                <Text style={[styles.favoriteButtonText, isFav && styles.favoriteButtonTextActive]}>
+                  {!user ? 'Sign in to Save' : isFav ? 'Saved' : 'Save to Favorites'}
+                </Text>
+              </>
             )}
           </Pressable>
         </View>
@@ -340,7 +463,6 @@ export default function WaterDetailScreen() {
   );
 }
 
-// Fly recommendation card component
 function FlyCard({
   fly,
   rank,
@@ -355,7 +477,9 @@ function FlyCard({
   return (
     <View style={styles.flyCard}>
       <View style={styles.flyHeader}>
-        <Text style={styles.flyRank}>#{rank}</Text>
+        <View style={styles.flyRankContainer}>
+          <Text style={styles.flyRank}>#{rank}</Text>
+        </View>
         {fly.image_url ? (
           <Image
             source={{ uri: fly.image_url }}
@@ -364,15 +488,17 @@ function FlyCard({
           />
         ) : (
           <View style={styles.flyImagePlaceholder}>
-            <Text style={styles.flyImagePlaceholderText}>
-              {fly.fly_type.charAt(0).toUpperCase()}
-            </Text>
+            <MaterialCommunityIcons
+              name={getFlyTypeIcon(fly.fly_type)}
+              size={24}
+              color={colors.primary[400]}
+            />
           </View>
         )}
         <View style={styles.flyInfo}>
           <Text style={styles.flyName}>{fly.fly_name}</Text>
           <Text style={styles.flyMeta}>
-            {fly.fly_type} • Size {fly.size}
+            {fly.fly_type} | Size {fly.size}
           </Text>
         </View>
         <View style={[
@@ -394,20 +520,64 @@ function FlyCard({
       <Text style={styles.flyReasoning}>{fly.reasoning}</Text>
       <View style={styles.flyCardFooter}>
         <View style={styles.flyTechnique}>
-          <Text style={styles.techniqueLabel}>Technique:</Text>
+          <Ionicons name="hand-right-outline" size={14} color={colors.text.tertiary} />
           <Text style={styles.techniqueValue}>{fly.technique}</Text>
         </View>
         <Pressable
-          style={[styles.addToBoxButton, isInBox && styles.addToBoxButtonDone]}
+          style={({ pressed }) => [
+            styles.addToBoxButton,
+            isInBox && styles.addToBoxButtonDone,
+            pressed && !isInBox && { opacity: 0.8 },
+          ]}
           onPress={onAddToBox}
+          disabled={isInBox}
         >
+          <Ionicons
+            name={isInBox ? 'checkmark' : 'add'}
+            size={14}
+            color={isInBox ? colors.success.dark : colors.success.main}
+          />
           <Text style={[styles.addToBoxButtonText, isInBox && styles.addToBoxButtonTextDone]}>
-            {isInBox ? 'In Box' : '+ Add'}
+            {isInBox ? 'In Box' : 'Add'}
           </Text>
         </Pressable>
       </View>
     </View>
   );
+}
+
+function getWaterTypeIcon(type: string): keyof typeof MaterialCommunityIcons.glyphMap {
+  switch (type.toLowerCase()) {
+    case 'river':
+    case 'stream':
+      return 'waves';
+    case 'lake':
+    case 'reservoir':
+      return 'waves';
+    case 'creek':
+      return 'water';
+    default:
+      return 'water-outline';
+  }
+}
+
+function getFlyTypeIcon(type: string): keyof typeof MaterialCommunityIcons.glyphMap {
+  switch (type.toLowerCase()) {
+    case 'dry':
+      return 'feather';
+    case 'nymph':
+      return 'hook';
+    case 'streamer':
+      return 'fish';
+    case 'emerger':
+      return 'water-outline';
+    case 'wet':
+      return 'waves';
+    case 'terrestrial':
+      return 'bug';
+    default:
+      return 'hook';
+  }
 }
 
 function formatWaterType(type: string): string {
@@ -448,200 +618,383 @@ function formatReportDate(dateString: string): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background.secondary,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: spacing[8],
+  },
+  loadingIconContainer: {
+    marginBottom: spacing[4],
   },
   loadingText: {
-    marginTop: 12,
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.tertiary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: spacing[8],
+  },
+  errorIconContainer: {
+    marginBottom: spacing[4],
   },
   errorText: {
     fontSize: 16,
-    color: '#dc2626',
+    color: colors.error.main,
     textAlign: 'center',
   },
+  // Hero Header
   header: {
-    backgroundColor: '#ffffff',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    marginBottom: spacing[4],
+  },
+  headerGradient: {
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingTop: spacing[6],
+    paddingBottom: spacing[8],
+    borderBottomLeftRadius: borderRadius['3xl'],
+    borderBottomRightRadius: borderRadius['3xl'],
+  },
+  headerContent: {
+    alignItems: 'center',
+  },
+  waterTypeIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing[4],
   },
   waterName: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
-    color: '#111827',
+    color: colors.text.inverse,
+    textAlign: 'center',
+    marginBottom: spacing[2],
   },
-  waterMeta: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginTop: 4,
+  waterMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[2],
+  },
+  metaBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: spacing[2.5],
+    paddingVertical: spacing[0.5],
+    borderRadius: borderRadius.full,
+  },
+  metaBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.text.inverse,
     textTransform: 'capitalize',
   },
-  species: {
+  waterLocation: {
     fontSize: 14,
-    color: '#2563eb',
-    marginTop: 8,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  description: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginTop: 12,
-    lineHeight: 20,
+  speciesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  speciesText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  // Quick Actions
+  quickActions: {
+    flexDirection: 'row',
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    marginTop: -spacing[6],
+    marginBottom: spacing[4],
+    gap: spacing[3],
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[3],
+    borderRadius: borderRadius.lg,
+    gap: spacing[2],
+    ...shadows.md,
   },
   directionsButton: {
-    marginTop: 16,
-    backgroundColor: '#10b981',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    backgroundColor: colors.secondary[500],
   },
-  directionsButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
+  quickActionText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: colors.text.inverse,
   },
   regulationsButton: {
-    marginTop: 10,
-    backgroundColor: '#fef3c7',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    backgroundColor: colors.accent[100],
     borderWidth: 1,
-    borderColor: '#f59e0b',
+    borderColor: colors.accent[500],
   },
   regulationsButtonText: {
-    color: '#92400e',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
+    color: colors.accent[700],
   },
+  buttonPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
+  },
+  // Description
+  descriptionCard: {
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginBottom: spacing[4],
+    padding: spacing[4],
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.card,
+    ...shadows.sm,
+  },
+  descriptionText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    lineHeight: 20,
+  },
+  // Fishing Report
+  fishingReportSection: {
+    backgroundColor: colors.info.light,
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginBottom: spacing[4],
+    padding: spacing[4],
+    borderRadius: borderRadius.card,
+    borderWidth: 1,
+    borderColor: colors.info.main,
+  },
+  fishingReportHeader: {
+    marginBottom: spacing[3],
+  },
+  reportTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  fishingReportTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.info.dark,
+  },
+  fishingReportSource: {
+    fontSize: 12,
+    color: colors.info.main,
+    marginTop: spacing[0.5],
+    marginLeft: spacing[6.5],
+  },
+  fishingReportNotes: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    lineHeight: 20,
+    marginBottom: spacing[3],
+  },
+  fishingReportFlies: {
+    marginBottom: spacing[3],
+  },
+  hotFliesBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    marginBottom: spacing[1],
+  },
+  hotFliesLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.warning.main,
+  },
+  fishingReportFliesList: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginLeft: spacing[5],
+  },
+  fishingReportConditions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  conditionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    paddingHorizontal: spacing[2.5],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.chip,
+    gap: spacing[1],
+  },
+  conditionChipText: {
+    fontSize: 12,
+    color: colors.info.main,
+    fontWeight: '500',
+  },
+  fishingReportDate: {
+    fontSize: 11,
+    color: colors.text.tertiary,
+  },
+  // Section
   section: {
-    padding: 16,
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingBottom: spacing[4],
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: spacing[4],
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing[2],
+    flex: 1,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontWeight: '700',
+    color: colors.text.primary,
   },
   conditionsSummary: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.text.tertiary,
     marginTop: 2,
   },
   lastUpdated: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: colors.neutral[400],
     marginTop: 2,
   },
   refreshButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#f3f4f6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1.5],
+    borderRadius: borderRadius.base,
+    backgroundColor: colors.primary[50],
+    gap: spacing[1],
   },
   refreshButtonText: {
     fontSize: 13,
-    color: '#2563eb',
+    color: colors.primary[500],
     fontWeight: '500',
   },
   recsLoading: {
-    padding: 32,
+    padding: spacing[8],
     alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.card,
+    ...shadows.sm,
   },
   recsLoadingText: {
-    marginTop: 12,
+    marginTop: spacing[3],
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.tertiary,
   },
   recsError: {
-    padding: 24,
-    backgroundColor: '#fef2f2',
-    borderRadius: 8,
+    padding: spacing[6],
+    backgroundColor: colors.error.light,
+    borderRadius: borderRadius.card,
     alignItems: 'center',
   },
   recsErrorText: {
     fontSize: 14,
-    color: '#dc2626',
+    color: colors.error.main,
     textAlign: 'center',
-    marginBottom: 12,
+    marginVertical: spacing[3],
   },
   retryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#dc2626',
-    borderRadius: 6,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    backgroundColor: colors.error.main,
+    borderRadius: borderRadius.base,
   },
   retryButtonText: {
-    color: '#ffffff',
-    fontWeight: '500',
+    color: colors.text.inverse,
+    fontWeight: '600',
+  },
+  noRecsContainer: {
+    padding: spacing[8],
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.card,
+    ...shadows.sm,
   },
   noRecs: {
-    padding: 24,
+    marginTop: spacing[3],
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.tertiary,
     textAlign: 'center',
   },
+  // Create Box Button
+  createBoxButton: {
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    marginBottom: spacing[4],
+    ...shadows.md,
+  },
+  createBoxButtonDone: {
+    ...shadows.none,
+  },
+  createBoxButtonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[3.5],
+    gap: spacing[2],
+  },
+  createBoxButtonText: {
+    color: colors.text.inverse,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  createBoxButtonTextDone: {
+    color: colors.success.main,
+  },
+  // Fly Card
   flyCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.card,
+    padding: spacing[4],
+    marginBottom: spacing[3],
+    ...shadows.md,
   },
   flyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: spacing[3],
+  },
+  flyRankContainer: {
+    width: 32,
+    alignItems: 'center',
   },
   flyRank: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#2563eb',
-    width: 30,
+    color: colors.primary[500],
   },
   flyImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: '#f3f4f6',
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.base,
+    marginRight: spacing[3],
+    backgroundColor: colors.neutral[100],
   },
   flyImagePlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    marginRight: 12,
-    backgroundColor: '#e5e7eb',
+    width: 52,
+    height: 52,
+    borderRadius: borderRadius.base,
+    marginRight: spacing[3],
+    backgroundColor: colors.background.water,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  flyImagePlaceholderText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#9ca3af',
   },
   flyInfo: {
     flex: 1,
@@ -649,209 +1002,134 @@ const styles = StyleSheet.create({
   flyName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text.primary,
   },
   flyMeta: {
     fontSize: 12,
-    color: '#6b7280',
+    color: colors.text.tertiary,
     textTransform: 'capitalize',
+    marginTop: 2,
   },
   confidence: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: spacing[2.5],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.chip,
   },
   confidenceHigh: {
-    backgroundColor: '#dcfce7',
+    backgroundColor: colors.success.light,
   },
   confidenceMed: {
-    backgroundColor: '#fef3c7',
+    backgroundColor: colors.warning.light,
   },
   confidenceLow: {
-    backgroundColor: '#fee2e2',
+    backgroundColor: colors.error.light,
   },
   confidenceValue: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   confidenceValueHigh: {
-    color: '#16a34a',
+    color: colors.success.main,
   },
   confidenceValueMed: {
-    color: '#ca8a04',
+    color: colors.warning.main,
   },
   confidenceValueLow: {
-    color: '#dc2626',
+    color: colors.error.main,
   },
   flyReasoning: {
     fontSize: 14,
-    color: '#4b5563',
+    color: colors.text.secondary,
     lineHeight: 20,
-    marginBottom: 8,
+    marginBottom: spacing[3],
   },
   flyCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 8,
+    paddingTop: spacing[3],
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: colors.border.light,
   },
   flyTechnique: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing[1.5],
     flex: 1,
   },
-  techniqueLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginRight: 6,
-  },
   techniqueValue: {
-    fontSize: 12,
-    color: '#111827',
+    fontSize: 13,
+    color: colors.text.secondary,
     fontWeight: '500',
   },
   addToBoxButton: {
-    backgroundColor: '#f0fdf4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.success.light,
     borderWidth: 1,
-    borderColor: '#86efac',
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderColor: colors.success.main,
+    borderRadius: borderRadius.base,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[1.5],
+    gap: spacing[1],
   },
   addToBoxButtonDone: {
-    backgroundColor: '#dcfce7',
-    borderColor: '#22c55e',
+    backgroundColor: colors.success.light,
+    borderColor: colors.success.main,
   },
   addToBoxButtonText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#16a34a',
+    color: colors.success.main,
   },
   addToBoxButtonTextDone: {
-    color: '#15803d',
+    color: colors.success.dark,
   },
-  createBoxButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  createBoxButtonDone: {
-    backgroundColor: '#dcfce7',
-  },
-  createBoxButtonText: {
-    color: '#ffffff',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  createBoxButtonTextDone: {
-    color: '#16a34a',
-  },
+  // Actions
   actions: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingBottom: spacing[8],
+    gap: spacing[3],
   },
   addToTripButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 14,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.md,
+  },
+  addToTripButtonGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[4],
+    gap: spacing[2],
   },
   addToTripButtonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
   },
   favoriteButton: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 14,
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.lg,
+    paddingVertical: spacing[4],
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    minHeight: 48,
     justifyContent: 'center',
+    gap: spacing[2],
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    ...shadows.sm,
   },
   favoriteButtonActive: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: colors.primary[500],
+    borderColor: colors.primary[500],
   },
   favoriteButtonText: {
-    color: '#374151',
+    color: colors.text.secondary,
     fontSize: 16,
     fontWeight: '600',
   },
   favoriteButtonTextActive: {
-    color: '#ffffff',
-  },
-  // Fishing Report Styles
-  fishingReportSection: {
-    backgroundColor: '#eff6ff',
-    margin: 16,
-    marginBottom: 0,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#bfdbfe',
-  },
-  fishingReportHeader: {
-    marginBottom: 12,
-  },
-  fishingReportTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e40af',
-  },
-  fishingReportSource: {
-    fontSize: 12,
-    color: '#3b82f6',
-    marginTop: 2,
-  },
-  fishingReportNotes: {
-    fontSize: 14,
-    color: '#1e3a5f',
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  fishingReportFlies: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  fishingReportFliesLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#1e40af',
-    marginRight: 6,
-  },
-  fishingReportFliesList: {
-    fontSize: 13,
-    color: '#1e3a5f',
-    flex: 1,
-  },
-  fishingReportConditions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
-  },
-  conditionChip: {
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  conditionChipText: {
-    fontSize: 12,
-    color: '#1e40af',
-    fontWeight: '500',
-  },
-  fishingReportDate: {
-    fontSize: 11,
-    color: '#6b7280',
+    color: colors.text.inverse,
   },
 });

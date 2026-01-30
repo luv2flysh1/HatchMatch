@@ -12,9 +12,12 @@ import {
 import { useState, useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useWaterStore, ExternalWaterBody } from '../../stores/waterStore';
 import { useLocation } from '../../hooks/useLocation';
 import { WaterMapView } from '../../components/WaterMapView';
+import { colors, gradients, shadows, spacing, borderRadius, layout } from '../../theme';
 import type { WaterBody } from '../../types/database';
 
 type ViewMode = 'list' | 'map';
@@ -23,7 +26,7 @@ const RADIUS_OPTIONS = [25, 50, 100, 200];
 
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchRadius, setSearchRadius] = useState(100); // Default 100 miles
+  const [searchRadius, setSearchRadius] = useState(100);
   const [lastNearbySearch, setLastNearbySearch] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -40,6 +43,7 @@ export default function SearchScreen() {
     searchByName,
     searchNearby,
     searchExternal,
+    refreshExternalSearch,
     addExternalWaterToDatabase,
     clearSearch,
     clearError,
@@ -54,7 +58,7 @@ export default function SearchScreen() {
   const handleSearch = useCallback((text: string) => {
     setSearchQuery(text);
     setLastNearbySearch(false);
-    setExternalSearchAttempted(false); // Reset when query changes
+    setExternalSearchAttempted(false);
     if (text.trim().length >= 2) {
       searchByName(text);
     } else if (text.trim().length === 0) {
@@ -83,7 +87,6 @@ export default function SearchScreen() {
     router.push(`/water/${water.id}`);
   }, []);
 
-  // Trigger external search when database search returns no results
   useEffect(() => {
     if (
       !isSearching &&
@@ -92,7 +95,6 @@ export default function SearchScreen() {
       !externalSearchAttempted &&
       !isSearchingExternal
     ) {
-      // Small delay to avoid rapid API calls during typing
       const timer = setTimeout(() => {
         setExternalSearchAttempted(true);
         searchExternal(lastSearchQuery);
@@ -106,10 +108,7 @@ export default function SearchScreen() {
       'Add to Database',
       `Would you like to add "${water.name}" to the HatchMatch database? This will allow you to get fly recommendations and save it to favorites.`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Add',
           onPress: async () => {
@@ -123,53 +122,86 @@ export default function SearchScreen() {
     );
   }, [addExternalWaterToDatabase]);
 
+  const handleRefreshExternalSearch = useCallback(() => {
+    setExternalSearchAttempted(true);
+    refreshExternalSearch();
+  }, [refreshExternalSearch]);
+
   const renderExternalWaterItem = useCallback(({ item }: { item: ExternalWaterBody }) => (
     <Pressable
-      style={styles.externalWaterCard}
+      style={({ pressed }) => [
+        styles.externalWaterCard,
+        pressed && styles.cardPressed,
+      ]}
       onPress={() => handleExternalWaterPress(item)}
     >
+      <View style={styles.externalCardIcon}>
+        <Ionicons name="add-circle-outline" size={24} color={colors.primary[500]} />
+      </View>
       <View style={styles.waterInfo}>
         <View style={styles.externalNameRow}>
           <Text style={styles.waterName}>{item.name}</Text>
-          <View style={styles.externalBadge}>
+          <View style={[
+            styles.externalBadge,
+            item.source === 'usgs' ? styles.usgsBadge : styles.gnisBadge
+          ]}>
             <Text style={styles.externalBadgeText}>
               {item.source === 'usgs' ? 'USGS' : 'GNIS'}
             </Text>
           </View>
         </View>
         <Text style={styles.waterMeta}>
-          {formatWaterType(item.type)} {item.state && `• ${item.state}`}
-          {item.county && ` • ${item.county}`}
+          {formatWaterType(item.type)} {item.state && `in ${item.state}`}
+          {item.county && ` - ${item.county}`}
         </Text>
-        <Text style={styles.externalHint}>Tap to add to database</Text>
+        <View style={styles.externalHintRow}>
+          <Ionicons name="information-circle-outline" size={14} color={colors.primary[400]} />
+          <Text style={styles.externalHint}>Tap to add to HatchMatch</Text>
+        </View>
       </View>
+      <Ionicons name="chevron-forward" size={20} color={colors.neutral[300]} />
     </Pressable>
   ), [handleExternalWaterPress]);
 
   const renderWaterItem = useCallback(({ item }: { item: WaterBody & { distance?: number } }) => (
     <Pressable
-      style={styles.waterCard}
+      style={({ pressed }) => [
+        styles.waterCard,
+        pressed && styles.cardPressed,
+      ]}
       onPress={() => handleWaterPress(item)}
     >
+      <View style={styles.waterIconContainer}>
+        <MaterialCommunityIcons
+          name={getWaterIcon(item.type)}
+          size={28}
+          color={colors.primary[500]}
+        />
+      </View>
       <View style={styles.waterInfo}>
         <Text style={styles.waterName}>{item.name}</Text>
         <Text style={styles.waterMeta}>
-          {formatWaterType(item.type)} • {item.state}
-          {item.city && ` • ${item.city}`}
+          {formatWaterType(item.type)} in {item.state}
+          {item.city && ` near ${item.city}`}
         </Text>
         {item.species && item.species.length > 0 && (
-          <Text style={styles.waterSpecies}>
-            {item.species.slice(0, 3).join(', ')}
-          </Text>
+          <View style={styles.speciesRow}>
+            <Ionicons name="fish-outline" size={12} color={colors.secondary[500]} />
+            <Text style={styles.waterSpecies}>
+              {item.species.slice(0, 3).join(', ')}
+            </Text>
+          </View>
         )}
       </View>
       {item.distance !== undefined && (
         <View style={styles.distanceBadge}>
+          <Ionicons name="location-outline" size={12} color={colors.primary[600]} />
           <Text style={styles.distanceText}>
             {formatDistance(item.distance)}
           </Text>
         </View>
       )}
+      <Ionicons name="chevron-forward" size={20} color={colors.neutral[300]} />
     </Pressable>
   ), [handleWaterPress]);
 
@@ -177,29 +209,34 @@ export default function SearchScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
-      <View style={styles.searchContainer}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search rivers, lakes, streams..."
-          value={searchQuery}
-          onChangeText={handleSearch}
-          placeholderTextColor="#9ca3af"
-          autoCapitalize="none"
-          autoCorrect={false}
-          returnKeyType="search"
-        />
-        {isSearching && (
-          <ActivityIndicator
-            style={styles.searchSpinner}
-            size="small"
-            color="#2563eb"
-          />
-        )}
-      </View>
+      {/* Hero Search Section */}
+      <View style={styles.heroSection}>
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputWrapper}>
+            <Ionicons name="search" size={20} color={colors.neutral[400]} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search rivers, lakes, streams..."
+              value={searchQuery}
+              onChangeText={handleSearch}
+              placeholderTextColor={colors.neutral[400]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {isSearching && (
+              <ActivityIndicator
+                style={styles.searchSpinner}
+                size="small"
+                color={colors.primary[500]}
+              />
+            )}
+          </View>
+        </View>
 
-      <View style={styles.nearbySection}>
+        {/* Radius Selector */}
         <View style={styles.radiusSelector}>
-          <Text style={styles.radiusLabel}>Search radius:</Text>
+          <Text style={styles.radiusLabel}>Radius:</Text>
           <View style={styles.radiusOptions}>
             {RADIUS_OPTIONS.map((radius) => (
               <Pressable
@@ -222,50 +259,73 @@ export default function SearchScreen() {
             ))}
           </View>
         </View>
+
+        {/* Nearby Search Button */}
         <Pressable
-          style={[
+          style={({ pressed }) => [
             styles.nearbyButton,
+            pressed && styles.nearbyButtonPressed,
             isLoadingLocation && styles.nearbyButtonDisabled,
           ]}
           onPress={handleNearbySearch}
           disabled={isLoadingLocation}
         >
-          {isLoadingLocation ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Text style={styles.nearbyButtonText}>Find Waters Near Me</Text>
-          )}
+          <LinearGradient
+            colors={gradients.secondaryButton as [string, string, ...string[]]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.nearbyButtonGradient}
+          >
+            {isLoadingLocation ? (
+              <ActivityIndicator size="small" color={colors.text.inverse} />
+            ) : (
+              <>
+                <Ionicons name="navigate" size={20} color={colors.text.inverse} />
+                <Text style={styles.nearbyButtonText}>Find Waters Near Me</Text>
+              </>
+            )}
+          </LinearGradient>
         </Pressable>
       </View>
 
       {showError && (
         <Pressable style={styles.errorBanner} onPress={clearError}>
-          <Text style={styles.errorText}>{showError}</Text>
-          <Text style={styles.errorDismiss}>Tap to dismiss</Text>
+          <Ionicons name="alert-circle" size={20} color={colors.error.main} />
+          <View style={styles.errorContent}>
+            <Text style={styles.errorText}>{showError}</Text>
+            <Text style={styles.errorDismiss}>Tap to dismiss</Text>
+          </View>
         </Pressable>
       )}
 
       {searchResults.length > 0 && (
         <View style={styles.viewToggleContainer}>
-          <Text style={styles.resultsCount}>
-            {searchResults.length} water{searchResults.length !== 1 ? 's' : ''} found
-          </Text>
+          <View style={styles.resultsInfo}>
+            <Ionicons name="water-outline" size={16} color={colors.neutral[500]} />
+            <Text style={styles.resultsCount}>
+              {searchResults.length} water{searchResults.length !== 1 ? 's' : ''} found
+            </Text>
+          </View>
           <View style={styles.viewToggle}>
             <Pressable
               style={[styles.viewToggleButton, viewMode === 'list' && styles.viewToggleButtonActive]}
               onPress={() => setViewMode('list')}
             >
-              <Text style={[styles.viewToggleText, viewMode === 'list' && styles.viewToggleTextActive]}>
-                List
-              </Text>
+              <Ionicons
+                name="list"
+                size={18}
+                color={viewMode === 'list' ? colors.primary[500] : colors.neutral[400]}
+              />
             </Pressable>
             <Pressable
               style={[styles.viewToggleButton, viewMode === 'map' && styles.viewToggleButtonActive]}
               onPress={() => setViewMode('map')}
             >
-              <Text style={[styles.viewToggleText, viewMode === 'map' && styles.viewToggleTextActive]}>
-                Map
-              </Text>
+              <Ionicons
+                name="map"
+                size={18}
+                color={viewMode === 'map' ? colors.primary[500] : colors.neutral[400]}
+              />
             </Pressable>
           </View>
         </View>
@@ -290,6 +350,9 @@ export default function SearchScreen() {
       ) : searchQuery.length > 0 && !isSearching ? (
         <ScrollView style={styles.noResultsContainer} contentContainerStyle={styles.noResultsContent}>
           <View style={styles.noResultsHeader}>
+            <View style={styles.noResultsIconContainer}>
+              <Ionicons name="search" size={32} color={colors.neutral[400]} />
+            </View>
             <Text style={styles.noResultsTitle}>Not in Our Database</Text>
             <Text style={styles.noResultsSubtitle}>
               No curated waters found for "{searchQuery}"
@@ -298,7 +361,7 @@ export default function SearchScreen() {
 
           {isSearchingExternal ? (
             <View style={styles.externalLoadingContainer}>
-              <ActivityIndicator size="small" color="#6366f1" />
+              <ActivityIndicator size="small" color={colors.primary[500]} />
               <Text style={styles.externalLoadingText}>
                 Searching USGS water databases...
               </Text>
@@ -306,7 +369,10 @@ export default function SearchScreen() {
           ) : externalResults.length > 0 ? (
             <View style={styles.externalResultsSection}>
               <View style={styles.externalHeader}>
-                <Text style={styles.externalTitle}>Found in USGS Database</Text>
+                <View style={styles.externalTitleRow}>
+                  <MaterialCommunityIcons name="database-search" size={20} color={colors.primary[600]} />
+                  <Text style={styles.externalTitle}>Found in USGS Database</Text>
+                </View>
                 <Text style={styles.externalDescription}>
                   These waters were found in government databases. Tap to add one to HatchMatch and get fly recommendations.
                 </Text>
@@ -318,9 +384,27 @@ export default function SearchScreen() {
                 scrollEnabled={false}
                 contentContainerStyle={styles.externalList}
               />
+              <Pressable
+                style={({ pressed }) => [
+                  styles.refreshExternalButton,
+                  pressed && styles.cardPressed,
+                ]}
+                onPress={handleRefreshExternalSearch}
+                disabled={isSearchingExternal}
+              >
+                {isSearchingExternal ? (
+                  <ActivityIndicator size="small" color={colors.primary[500]} />
+                ) : (
+                  <>
+                    <Ionicons name="refresh" size={18} color={colors.primary[600]} />
+                    <Text style={styles.refreshExternalButtonText}>Search USGS Again</Text>
+                  </>
+                )}
+              </Pressable>
             </View>
           ) : (
             <View style={styles.noExternalResults}>
+              <Ionicons name="cloud-offline-outline" size={48} color={colors.neutral[300]} />
               <Text style={styles.noExternalText}>
                 No matching waters found in external databases either.
               </Text>
@@ -332,6 +416,9 @@ export default function SearchScreen() {
         </ScrollView>
       ) : lastNearbySearch && !isSearching ? (
         <View style={styles.placeholder}>
+          <View style={styles.placeholderIconContainer}>
+            <Ionicons name="location-outline" size={48} color={colors.neutral[300]} />
+          </View>
           <Text style={styles.placeholderTitle}>No Waters Found</Text>
           <Text style={styles.placeholderText}>
             No fishing waters found within {searchRadius} miles of your location.
@@ -340,15 +427,52 @@ export default function SearchScreen() {
         </View>
       ) : (
         <View style={styles.placeholder}>
+          <View style={styles.placeholderIconContainer}>
+            <LinearGradient
+              colors={[colors.primary[100], colors.background.water]}
+              style={styles.placeholderIconGradient}
+            >
+              <MaterialCommunityIcons name="fish" size={48} color={colors.primary[500]} />
+            </LinearGradient>
+          </View>
           <Text style={styles.placeholderTitle}>Find Your Water</Text>
           <Text style={styles.placeholderText}>
             Search for a river or lake by name, or tap "Find Waters Near Me"
             to discover fishing spots nearby.
           </Text>
+          <View style={styles.placeholderFeatures}>
+            <View style={styles.featureItem}>
+              <Ionicons name="sparkles" size={16} color={colors.accent[500]} />
+              <Text style={styles.featureText}>AI-powered fly recommendations</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="trending-up" size={16} color={colors.secondary[500]} />
+              <Text style={styles.featureText}>Real-time hatch data</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <Ionicons name="location" size={16} color={colors.primary[500]} />
+              <Text style={styles.featureText}>Local fly shop finder</Text>
+            </View>
+          </View>
         </View>
       )}
     </SafeAreaView>
   );
+}
+
+function getWaterIcon(type: string): keyof typeof MaterialCommunityIcons.glyphMap {
+  switch (type.toLowerCase()) {
+    case 'river':
+    case 'stream':
+      return 'waves';
+    case 'lake':
+    case 'reservoir':
+      return 'waves';
+    case 'creek':
+      return 'water';
+    default:
+      return 'water-outline';
+  }
 }
 
 function formatWaterType(type: string): string {
@@ -368,149 +492,182 @@ function formatDistance(miles: number): string {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background.secondary,
+  },
+  heroSection: {
+    backgroundColor: colors.background.primary,
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingTop: spacing[2],
+    paddingBottom: spacing[4],
+    borderBottomLeftRadius: borderRadius['2xl'],
+    borderBottomRightRadius: borderRadius['2xl'],
+    ...shadows.md,
   },
   searchContainer: {
-    padding: 16,
-    position: 'relative',
+    marginBottom: spacing[4],
+  },
+  searchInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: spacing[4],
+  },
+  searchIcon: {
+    marginRight: spacing[2],
   },
   searchInput: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 14,
-    paddingRight: 44,
+    flex: 1,
+    paddingVertical: spacing[3],
     fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    color: colors.text.primary,
   },
   searchSpinner: {
-    position: 'absolute',
-    right: 28,
-    top: 28,
-  },
-  nearbySection: {
-    marginHorizontal: 16,
+    marginLeft: spacing[2],
   },
   radiusSelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: spacing[4],
   },
   radiusLabel: {
     fontSize: 14,
-    color: '#6b7280',
-    marginRight: 10,
+    color: colors.text.secondary,
+    marginRight: spacing[2],
+    fontWeight: '500',
   },
   radiusOptions: {
     flexDirection: 'row',
     flex: 1,
+    gap: spacing[2],
   },
   radiusChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#e5e7eb',
-    marginRight: 8,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[1.5],
+    borderRadius: borderRadius.full,
+    backgroundColor: colors.neutral[100],
   },
   radiusChipSelected: {
-    backgroundColor: '#2563eb',
+    backgroundColor: colors.primary[500],
   },
   radiusChipText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#4b5563',
+    fontWeight: '600',
+    color: colors.text.secondary,
   },
   radiusChipTextSelected: {
-    color: '#ffffff',
+    color: colors.text.inverse,
   },
   nearbyButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 14,
-    alignItems: 'center',
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    ...shadows.primaryGlow,
+  },
+  nearbyButtonGradient: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 48,
+    paddingVertical: spacing[4],
+    gap: spacing[2],
+  },
+  nearbyButtonPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
   },
   nearbyButtonDisabled: {
     opacity: 0.7,
   },
   nearbyButtonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   errorBanner: {
-    margin: 16,
-    padding: 12,
-    backgroundColor: '#fef2f2',
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    margin: spacing[4],
+    padding: spacing[4],
+    backgroundColor: colors.error.light,
+    borderRadius: borderRadius.base,
     borderWidth: 1,
-    borderColor: '#fecaca',
+    borderColor: colors.error.main,
+    gap: spacing[2],
+  },
+  errorContent: {
+    flex: 1,
   },
   errorText: {
-    color: '#dc2626',
+    color: colors.error.main,
     fontSize: 14,
+    fontWeight: '500',
   },
   errorDismiss: {
-    color: '#9ca3af',
+    color: colors.neutral[400],
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
   },
   viewToggleContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2.5],
+    backgroundColor: colors.background.primary,
+    marginTop: spacing[2],
+    marginHorizontal: spacing[4],
+    borderRadius: borderRadius.base,
+    ...shadows.sm,
+  },
+  resultsInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
   },
   resultsCount: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.secondary,
+    fontWeight: '500',
   },
   viewToggle: {
     flexDirection: 'row',
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.sm,
     padding: 2,
   },
   viewToggleButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[1.5],
+    borderRadius: borderRadius.sm,
   },
   viewToggleButtonActive: {
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  viewToggleText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#6b7280',
-  },
-  viewToggleTextActive: {
-    color: '#111827',
+    backgroundColor: colors.background.primary,
+    ...shadows.sm,
   },
   resultsList: {
-    padding: 16,
-    paddingTop: 8,
+    padding: spacing[4],
+    paddingTop: spacing[2],
   },
   waterCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.card,
+    padding: spacing[4],
+    marginBottom: spacing[3],
     flexDirection: 'row',
     alignItems: 'center',
+    ...shadows.md,
+  },
+  cardPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.95,
+  },
+  waterIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.base,
+    backgroundColor: colors.background.water,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing[4],
   },
   waterInfo: {
     flex: 1,
@@ -518,150 +675,246 @@ const styles = StyleSheet.create({
   waterName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text.primary,
   },
   waterMeta: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.text.tertiary,
     marginTop: 2,
+  },
+  speciesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing[1],
+    gap: spacing[1],
   },
   waterSpecies: {
     fontSize: 12,
-    color: '#2563eb',
-    marginTop: 4,
+    color: colors.secondary[600],
+    fontWeight: '500',
   },
   distanceBadge: {
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary[50],
+    paddingHorizontal: spacing[2.5],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.full,
+    marginRight: spacing[2],
+    gap: 4,
   },
   distanceText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#2563eb',
+    color: colors.primary[600],
   },
   placeholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: spacing[8],
+  },
+  placeholderIconContainer: {
+    marginBottom: spacing[6],
+  },
+  placeholderIconGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   placeholderTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+    fontSize: 22,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: spacing[2],
   },
   placeholderText: {
     fontSize: 15,
-    color: '#6b7280',
+    color: colors.text.tertiary,
     textAlign: 'center',
     lineHeight: 22,
+    paddingHorizontal: spacing[6],
   },
-  // No results / External search styles
+  placeholderFeatures: {
+    marginTop: spacing[8],
+    gap: spacing[3],
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  featureText: {
+    fontSize: 14,
+    color: colors.text.secondary,
+    fontWeight: '500',
+  },
   noResultsContainer: {
     flex: 1,
   },
   noResultsContent: {
-    padding: 16,
+    padding: spacing[4],
   },
   noResultsHeader: {
-    marginBottom: 20,
     alignItems: 'center',
+    marginBottom: spacing[6],
+    padding: spacing[6],
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
+  },
+  noResultsIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.neutral[100],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing[4],
   },
   noResultsTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: colors.text.primary,
+    marginBottom: spacing[1],
   },
   noResultsSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.tertiary,
     textAlign: 'center',
   },
   externalLoadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
-    backgroundColor: '#f0f0ff',
-    borderRadius: 12,
+    padding: spacing[6],
+    backgroundColor: colors.primary[50],
+    borderRadius: borderRadius.lg,
+    gap: spacing[4],
   },
   externalLoadingText: {
-    marginLeft: 12,
     fontSize: 14,
-    color: '#6366f1',
+    color: colors.primary[600],
+    fontWeight: '500',
   },
   externalResultsSection: {
-    marginTop: 8,
+    marginTop: spacing[2],
   },
   externalHeader: {
-    marginBottom: 12,
+    marginBottom: spacing[4],
+    padding: spacing[4],
+    backgroundColor: colors.primary[50],
+    borderRadius: borderRadius.lg,
+  },
+  externalTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[1],
   },
   externalTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#6366f1',
-    marginBottom: 4,
+    fontWeight: '700',
+    color: colors.primary[700],
   },
   externalDescription: {
     fontSize: 13,
-    color: '#6b7280',
+    color: colors.text.secondary,
     lineHeight: 18,
   },
   externalList: {
-    gap: 8,
+    gap: spacing[2],
   },
   externalWaterCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#c7d2fe',
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.lg,
+    padding: spacing[4],
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: colors.primary[200],
     borderStyle: 'dashed',
+    ...shadows.sm,
+  },
+  externalCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary[50],
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing[4],
   },
   externalNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing[2],
   },
   externalBadge: {
-    backgroundColor: '#e0e7ff',
-    paddingHorizontal: 8,
+    paddingHorizontal: spacing[2],
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: borderRadius.sm,
+  },
+  usgsBadge: {
+    backgroundColor: colors.primary[100],
+  },
+  gnisBadge: {
+    backgroundColor: colors.accent[100],
   },
   externalBadgeText: {
     fontSize: 10,
-    fontWeight: '600',
-    color: '#4f46e5',
+    fontWeight: '700',
+    color: colors.primary[700],
     textTransform: 'uppercase',
+  },
+  externalHintRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing[1],
+    gap: 4,
   },
   externalHint: {
     fontSize: 12,
-    color: '#6366f1',
-    marginTop: 6,
-    fontStyle: 'italic',
+    color: colors.primary[500],
+    fontWeight: '500',
   },
   noExternalResults: {
     alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#f9fafb',
-    borderRadius: 12,
+    padding: spacing[8],
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.lg,
+    ...shadows.sm,
   },
   noExternalText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.secondary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginTop: spacing[4],
+    marginBottom: spacing[1],
   },
   noExternalHint: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: colors.neutral[400],
     textAlign: 'center',
+  },
+  refreshExternalButton: {
+    marginTop: spacing[4],
+    padding: spacing[3.5],
+    backgroundColor: colors.primary[50],
+    borderRadius: borderRadius.base,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing[2],
+    borderWidth: 1,
+    borderColor: colors.primary[200],
+  },
+  refreshExternalButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary[600],
   },
 });

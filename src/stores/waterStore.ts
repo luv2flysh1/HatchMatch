@@ -73,6 +73,7 @@ interface WaterState {
   searchByName: (query: string, state?: string) => Promise<void>;
   searchNearby: (latitude: number, longitude: number, radiusMiles?: number) => Promise<void>;
   searchExternal: (query: string, state?: string) => Promise<void>;
+  refreshExternalSearch: () => Promise<void>;
   getWaterBody: (id: string) => Promise<WaterBody | null>;
   getFavorites: () => Promise<void>;
   toggleFavorite: (waterBodyId: string) => Promise<{ error: Error | null }>;
@@ -310,6 +311,42 @@ export const useWaterStore = create<WaterState>((set, get) => ({
         body: {
           query: query.trim(),
           state: state?.toUpperCase(),
+          limit: 15,
+        },
+      });
+
+      if (error) {
+        console.error('External lookup error:', error);
+        set({ externalResults: [], isSearchingExternal: false });
+        return;
+      }
+
+      set({
+        externalResults: data?.results || [],
+        isSearchingExternal: false,
+      });
+    } catch (error) {
+      console.error('External search failed:', error);
+      set({
+        externalResults: [],
+        isSearchingExternal: false,
+      });
+    }
+  },
+
+  refreshExternalSearch: async () => {
+    const { lastSearchQuery, isSearchingExternal } = get();
+
+    if (!lastSearchQuery.trim() || isSearchingExternal) {
+      return;
+    }
+
+    set({ isSearchingExternal: true });
+
+    try {
+      const { data, error } = await supabase.functions.invoke('lookup-water', {
+        body: {
+          query: lastSearchQuery.trim(),
           limit: 15,
         },
       });
