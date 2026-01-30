@@ -2,6 +2,7 @@ import { Tabs } from 'expo-router';
 import { View, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FlyBoxHeaderButton } from '../../components/FlyBoxHeaderButton';
+import { BrandHeader } from '../../components/BrandHeader';
 import { colors, shadows, spacing, borderRadius } from '../../theme';
 
 function TabBarIcon({
@@ -51,7 +52,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           title: 'Explore',
-          headerTitle: 'HatchMatch',
+          headerTitle: () => <BrandHeader size="small" />,
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon name="compass-outline" color={color} focused={focused} />
           ),

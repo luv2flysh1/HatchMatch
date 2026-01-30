@@ -119,7 +119,7 @@ export const useWaterStore = create<WaterState>((set, get) => ({
           .select('*')
           .eq('state', stateAbbr)
           .order('name')
-          .limit(50);
+          .limit(200);
       } else {
         // Search by name
         queryBuilder = supabase
@@ -127,7 +127,7 @@ export const useWaterStore = create<WaterState>((set, get) => ({
           .select('*')
           .ilike('name', `%${trimmedQuery}%`)
           .order('name')
-          .limit(20);
+          .limit(100);
 
         if (state) {
           queryBuilder = queryBuilder.eq('state', state.toUpperCase());

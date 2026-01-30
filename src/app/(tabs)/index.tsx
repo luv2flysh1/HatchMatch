@@ -463,15 +463,23 @@ export default function SearchScreen() {
 function getWaterIcon(type: string): keyof typeof MaterialCommunityIcons.glyphMap {
   switch (type.toLowerCase()) {
     case 'river':
+      return 'waves'; // Flowing water waves
     case 'stream':
-      return 'waves';
-    case 'lake':
-    case 'reservoir':
-      return 'waves';
+      return 'wave'; // Smaller wave for streams
     case 'creek':
-      return 'water';
+      return 'water-outline'; // Small water body
+    case 'lake':
+      return 'circle-slice-8'; // Circular still water
+    case 'reservoir':
+      return 'water-well'; // Man-made water storage
+    case 'pond':
+      return 'circle-outline'; // Small still water
+    case 'spring':
+      return 'water-pump'; // Water source
+    case 'canal':
+      return 'pipe'; // Man-made channel
     default:
-      return 'water-outline';
+      return 'fish'; // Generic water body
   }
 }
 

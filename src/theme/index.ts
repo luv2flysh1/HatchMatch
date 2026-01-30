@@ -253,24 +253,25 @@ export const typography = {
   },
 
   // Pre-defined Text Styles
+  // Note: lineHeight must be absolute pixel values in React Native, not multipliers
   variants: {
     // Display styles for hero sections and splash screens
     displayLarge: {
       fontSize: 48,
       fontWeight: '700' as const,
-      lineHeight: 1.2,
+      lineHeight: 58, // 48 * 1.2
       letterSpacing: -0.8,
     },
     displayMedium: {
       fontSize: 36,
       fontWeight: '700' as const,
-      lineHeight: 1.2,
+      lineHeight: 43, // 36 * 1.2
       letterSpacing: -0.4,
     },
     displaySmall: {
       fontSize: 30,
       fontWeight: '600' as const,
-      lineHeight: 1.2,
+      lineHeight: 36, // 30 * 1.2
       letterSpacing: -0.4,
     },
 
@@ -278,25 +279,25 @@ export const typography = {
     h1: {
       fontSize: 24,
       fontWeight: '700' as const,
-      lineHeight: 1.2,
+      lineHeight: 29, // 24 * 1.2
       letterSpacing: -0.4,
     },
     h2: {
       fontSize: 20,
       fontWeight: '600' as const,
-      lineHeight: 1.3,
+      lineHeight: 26, // 20 * 1.3
       letterSpacing: -0.2,
     },
     h3: {
       fontSize: 18,
       fontWeight: '600' as const,
-      lineHeight: 1.4,
+      lineHeight: 25, // 18 * 1.4
       letterSpacing: 0,
     },
     h4: {
       fontSize: 16,
       fontWeight: '600' as const,
-      lineHeight: 1.4,
+      lineHeight: 22, // 16 * 1.4
       letterSpacing: 0,
     },
 
@@ -304,19 +305,19 @@ export const typography = {
     bodyLarge: {
       fontSize: 16,
       fontWeight: '400' as const,
-      lineHeight: 1.5,
+      lineHeight: 24, // 16 * 1.5
       letterSpacing: 0,
     },
     bodyMedium: {
       fontSize: 15,
       fontWeight: '400' as const,
-      lineHeight: 1.5,
+      lineHeight: 22, // 15 * 1.5
       letterSpacing: 0,
     },
     bodySmall: {
       fontSize: 13,
       fontWeight: '400' as const,
-      lineHeight: 1.5,
+      lineHeight: 20, // 13 * 1.5
       letterSpacing: 0,
     },
 
@@ -324,19 +325,19 @@ export const typography = {
     labelLarge: {
       fontSize: 16,
       fontWeight: '500' as const,
-      lineHeight: 1.4,
+      lineHeight: 22, // 16 * 1.4
       letterSpacing: 0.2,
     },
     labelMedium: {
       fontSize: 14,
       fontWeight: '500' as const,
-      lineHeight: 1.4,
+      lineHeight: 20, // 14 * 1.4
       letterSpacing: 0.2,
     },
     labelSmall: {
       fontSize: 12,
       fontWeight: '500' as const,
-      lineHeight: 1.4,
+      lineHeight: 17, // 12 * 1.4
       letterSpacing: 0.4,
     },
 
@@ -344,13 +345,13 @@ export const typography = {
     caption: {
       fontSize: 12,
       fontWeight: '400' as const,
-      lineHeight: 1.4,
+      lineHeight: 17, // 12 * 1.4
       letterSpacing: 0.2,
     },
     overline: {
       fontSize: 11,
       fontWeight: '600' as const,
-      lineHeight: 1.4,
+      lineHeight: 15, // 11 * 1.4
       letterSpacing: 1.2,
       textTransform: 'uppercase' as const,
     },
@@ -359,19 +360,19 @@ export const typography = {
     buttonLarge: {
       fontSize: 16,
       fontWeight: '600' as const,
-      lineHeight: 1.4,
+      lineHeight: 22, // 16 * 1.4
       letterSpacing: 0.2,
     },
     buttonMedium: {
       fontSize: 14,
       fontWeight: '600' as const,
-      lineHeight: 1.4,
+      lineHeight: 20, // 14 * 1.4
       letterSpacing: 0.2,
     },
     buttonSmall: {
       fontSize: 12,
       fontWeight: '600' as const,
-      lineHeight: 1.4,
+      lineHeight: 17, // 12 * 1.4
       letterSpacing: 0.4,
     },
   },

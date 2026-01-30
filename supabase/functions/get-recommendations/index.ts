@@ -4,6 +4,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getFlyImageUrl, getFlyTypePlaceholder } from './flyImages.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -501,6 +502,15 @@ function parseClaudeResponse(responseText: string, flies: any[]): FlyRecommendat
         f.name.toLowerCase() === rec.fly_name.toLowerCase()
       );
 
+      // Get image URL: database first, then static mapping, then type placeholder
+      let imageUrl = fly?.image_url || null;
+      if (!imageUrl) {
+        imageUrl = getFlyImageUrl(rec.fly_name);
+      }
+      if (!imageUrl) {
+        imageUrl = getFlyTypePlaceholder(rec.fly_type);
+      }
+
       return {
         fly_id: fly?.id || '',
         fly_name: rec.fly_name,
@@ -509,7 +519,7 @@ function parseClaudeResponse(responseText: string, flies: any[]): FlyRecommendat
         reasoning: rec.reasoning,
         size: rec.size,
         technique: rec.technique,
-        image_url: fly?.image_url || null,
+        image_url: imageUrl,
       };
     }).slice(0, 5); // Ensure max 5 recommendations
 
@@ -531,6 +541,16 @@ function getDefaultRecommendations(flies: any[]): FlyRecommendation[] {
 
   return defaults.map((d, index) => {
     const fly = flies.find(f => f.name.toLowerCase().includes(d.name.toLowerCase().split(' ')[0]));
+
+    // Get image URL: database first, then static mapping, then type placeholder
+    let imageUrl = fly?.image_url || null;
+    if (!imageUrl) {
+      imageUrl = getFlyImageUrl(d.name);
+    }
+    if (!imageUrl) {
+      imageUrl = getFlyTypePlaceholder(d.type);
+    }
+
     return {
       fly_id: fly?.id || '',
       fly_name: d.name,
@@ -539,7 +559,7 @@ function getDefaultRecommendations(flies: any[]): FlyRecommendation[] {
       reasoning: 'Versatile pattern that works in most conditions.',
       size: d.size,
       technique: d.technique,
-      image_url: fly?.image_url || null,
+      image_url: imageUrl,
     };
   });
 }

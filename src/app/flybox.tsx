@@ -163,6 +163,18 @@ export default function FlyBoxScreen() {
           </LinearGradient>
         </View>
 
+        {/* Clear Button - at top for easy access */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.clearButton,
+            pressed && styles.cardPressed,
+          ]}
+          onPress={handleClearBox}
+        >
+          <Ionicons name="trash-outline" size={18} color={colors.error.main} />
+          <Text style={styles.clearButtonText}>Clear Fly Box</Text>
+        </Pressable>
+
         {/* Fly Type Sections */}
         {sortedTypes.map((type) => (
           <View key={type} style={styles.typeSection}>
@@ -248,17 +260,6 @@ export default function FlyBoxScreen() {
           ))}
         </View>
 
-        {/* Clear Button */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.clearButton,
-            pressed && styles.cardPressed,
-          ]}
-          onPress={handleClearBox}
-        >
-          <Ionicons name="trash-outline" size={18} color={colors.error.main} />
-          <Text style={styles.clearButtonText}>Clear Fly Box</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -616,10 +617,9 @@ const styles = StyleSheet.create({
   },
   // Clear Button
   clearButton: {
-    margin: layout.screenPaddingHorizontal,
-    marginTop: spacing[6],
-    marginBottom: spacing[8],
-    padding: spacing[4],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginBottom: spacing[4],
+    padding: spacing[3],
     borderRadius: borderRadius.base,
     backgroundColor: colors.error.light,
     borderWidth: 1,

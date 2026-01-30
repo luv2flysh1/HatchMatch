@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useOnboardingStore } from '../stores/onboardingStore';
+import { HatchMatchLogo } from '../components/HatchMatchLogo';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
 
 const { width, height } = Dimensions.get('window');
@@ -21,7 +23,7 @@ interface OnboardingSlide {
   title: string;
   subtitle: string;
   description: string;
-  icon: string;
+  iconName: keyof typeof MaterialCommunityIcons.glyphMap;
   backgroundColor: string;
   accentColor: string;
 }
@@ -32,7 +34,7 @@ const SLIDES: OnboardingSlide[] = [
     title: 'HatchMatch',
     subtitle: 'Your AI Fly Fishing Companion',
     description: 'Discover waters, match hatches, and build the perfect fly box for every trip.',
-    icon: '',
+    iconName: 'fish',
     backgroundColor: colors.primary[800],
     accentColor: colors.primary[400],
   },
@@ -41,7 +43,7 @@ const SLIDES: OnboardingSlide[] = [
     title: 'Find Your Water',
     subtitle: 'Discover Amazing Fishing Spots',
     description: 'Search rivers, lakes, and streams near you. Get detailed information about species, access points, and local conditions.',
-    icon: '',
+    iconName: 'map-search',
     backgroundColor: colors.tertiary[700],
     accentColor: colors.tertiary[400],
   },
@@ -50,7 +52,7 @@ const SLIDES: OnboardingSlide[] = [
     title: 'Match the Hatch',
     subtitle: 'AI-Powered Fly Recommendations',
     description: 'Get personalized fly recommendations based on current hatches, water conditions, and seasonal patterns.',
-    icon: '',
+    iconName: 'bug',
     backgroundColor: colors.accent[800],
     accentColor: colors.accent[400],
   },
@@ -59,7 +61,7 @@ const SLIDES: OnboardingSlide[] = [
     title: 'Build Your Fly Box',
     subtitle: 'Create Shopping Lists',
     description: 'Save recommended flies to your box, track quantities, and find local shops or online retailers to stock up.',
-    icon: '',
+    iconName: 'briefcase-outline',
     backgroundColor: colors.secondary[800],
     accentColor: colors.secondary[400],
   },
@@ -68,6 +70,7 @@ const SLIDES: OnboardingSlide[] = [
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [dontShowAgain, setDontShowAgain] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const scrollX = useRef(new Animated.Value(0)).current;
   const completeOnboarding = useOnboardingStore((state) => state.completeOnboarding);
@@ -96,12 +99,14 @@ export default function WelcomeScreen() {
   };
 
   const handleGetStarted = async () => {
-    await completeOnboarding();
+    if (dontShowAgain) {
+      await completeOnboarding();
+    }
     router.replace('/(tabs)');
   };
 
   const handleSkip = async () => {
-    await completeOnboarding();
+    // Skip just goes to the app without saving preference
     router.replace('/(tabs)');
   };
 
@@ -166,9 +171,7 @@ export default function WelcomeScreen() {
             ]}
           >
             {isSplash ? (
-              <View style={[styles.logoContainer, { borderColor: item.accentColor }]}>
-                <Text style={styles.logoText}>HM</Text>
-              </View>
+              <HatchMatchLogo size={140} color={colors.neutral[0]} showBackground={true} />
             ) : (
               <View
                 style={[
@@ -179,7 +182,11 @@ export default function WelcomeScreen() {
                   },
                 ]}
               >
-                <Text style={styles.featureIcon}>{item.icon}</Text>
+                <MaterialCommunityIcons
+                  name={item.iconName}
+                  size={56}
+                  color={colors.neutral[0]}
+                />
               </View>
             )}
           </Animated.View>
@@ -269,6 +276,20 @@ export default function WelcomeScreen() {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         {renderPagination()}
+
+        {isLastSlide && (
+          <Pressable
+            style={styles.dontShowAgainContainer}
+            onPress={() => setDontShowAgain(!dontShowAgain)}
+          >
+            <View style={[styles.checkbox, dontShowAgain && styles.checkboxChecked]}>
+              {dontShowAgain && (
+                <MaterialCommunityIcons name="check" size={14} color={colors.neutral[0]} />
+              )}
+            </View>
+            <Text style={styles.dontShowAgainText}>Don't show this again</Text>
+          </Pressable>
+        )}
 
         <View style={styles.buttonContainer}>
           {!isLastSlide && (
@@ -451,5 +472,30 @@ const styles = StyleSheet.create({
   },
   getStartedButtonText: {
     color: colors.primary[700],
+  },
+  dontShowAgainContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing[4],
+    gap: spacing[2],
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: borderRadius.sm,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.secondary[500],
+    borderColor: colors.secondary[500],
+  },
+  dontShowAgainText: {
+    ...typography.variants.bodySmall,
+    color: 'rgba(255, 255, 255, 0.7)',
   },
 });
