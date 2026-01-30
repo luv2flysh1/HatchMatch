@@ -96,7 +96,7 @@ export default function FlyBoxScreen() {
               colors={[colors.primary[100], colors.accent[100]]}
               style={styles.emptyIconGradient}
             >
-              <MaterialCommunityIcons name="box-variant" size={56} color={colors.primary[500]} />
+              <MaterialCommunityIcons name="package-variant" size={56} color={colors.primary[500]} />
             </LinearGradient>
           </View>
           <Text style={styles.emptyTitle}>Your Fly Box is Empty</Text>
@@ -112,7 +112,7 @@ export default function FlyBoxScreen() {
             onPress={() => router.push('/')}
           >
             <LinearGradient
-              colors={gradients.primaryButton as [string, string, ...string[]]}
+              colors={gradients.primaryButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.browseButtonGradient}
@@ -144,14 +144,14 @@ export default function FlyBoxScreen() {
         {/* Header Section */}
         <View style={styles.header}>
           <LinearGradient
-            colors={gradients.river as [string, string, ...string[]]}
+            colors={gradients.river}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
           >
             <View style={styles.headerContent}>
               <View style={styles.headerIconContainer}>
-                <MaterialCommunityIcons name="box-variant" size={32} color={colors.text.inverse} />
+                <MaterialCommunityIcons name="package-variant" size={32} color={colors.text.inverse} />
               </View>
               <View style={styles.headerTextContainer}>
                 <Text style={styles.headerTitle}>My Fly Box</Text>
@@ -204,7 +204,7 @@ export default function FlyBoxScreen() {
             disabled={isLoadingShops}
           >
             <LinearGradient
-              colors={gradients.secondaryButton as [string, string, ...string[]]}
+              colors={gradients.secondaryButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.localShopsButtonGradient}

@@ -19,7 +19,7 @@ export function FlyBoxHeaderButton() {
       ]}
       onPress={handlePress}
     >
-      <MaterialCommunityIcons name="box-variant" size={24} color={colors.text.inverse} />
+      <MaterialCommunityIcons name="package-variant" size={24} color={colors.text.inverse} />
       {itemCount > 0 && (
         <View style={styles.badge}>
           <MaterialCommunityIcons

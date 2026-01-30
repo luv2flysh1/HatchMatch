@@ -184,7 +184,7 @@ export default function WaterDetailScreen() {
         {/* Hero Header */}
         <View style={styles.header}>
           <LinearGradient
-            colors={gradients.river as [string, string, ...string[]]}
+            colors={gradients.river}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
@@ -380,7 +380,7 @@ export default function WaterDetailScreen() {
                 disabled={boxCreated}
               >
                 <LinearGradient
-                  colors={boxCreated ? [colors.success.light, colors.success.light] : gradients.primaryButton as [string, string, ...string[]]}
+                  colors={boxCreated ? [colors.success.light, colors.success.light] : gradients.primaryButton}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.createBoxButtonGradient}
@@ -424,7 +424,7 @@ export default function WaterDetailScreen() {
             ]}
           >
             <LinearGradient
-              colors={gradients.primaryButton as [string, string, ...string[]]}
+              colors={gradients.primaryButton}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.addToTripButtonGradient}
@@ -789,7 +789,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.info.main,
     marginTop: spacing[0.5],
-    marginLeft: spacing[6.5],
+    marginLeft: spacing[6],
   },
   fishingReportNotes: {
     fontSize: 14,

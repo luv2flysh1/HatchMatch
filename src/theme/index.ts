@@ -181,23 +181,23 @@ export const colors = {
 
 export const gradients = {
   // River gradient - for headers and hero sections
-  river: ['#0B324A', '#1B7FA8', '#33A7CF'],
-  riverHorizontal: ['#114C6A', '#1B7FA8'],
+  river: ['#0B324A', '#1B7FA8', '#33A7CF'] as const,
+  riverHorizontal: ['#114C6A', '#1B7FA8'] as const,
 
   // Sunrise over water - premium/highlight sections
-  sunrise: ['#0B324A', '#1B7FA8', '#D4930D'],
+  sunrise: ['#0B324A', '#1B7FA8', '#D4930D'] as const,
 
   // Forest canopy - nature/success themes
-  forest: ['#102D12', '#2E7D32', '#66BB6A'],
+  forest: ['#102D12', '#2E7D32', '#66BB6A'] as const,
 
   // Subtle card gradient
-  card: ['#FFFFFF', '#FAFBFC'],
+  card: ['#FFFFFF', '#FAFBFC'] as const,
 
   // Premium button gradients
-  primaryButton: ['#1B7FA8', '#166589'],
-  secondaryButton: ['#2E7D32', '#27692A'],
-  accentButton: ['#D4930D', '#B8800B'],
-} as const;
+  primaryButton: ['#1B7FA8', '#166589'] as const,
+  secondaryButton: ['#2E7D32', '#27692A'] as const,
+  accentButton: ['#D4930D', '#B8800B'] as const,
+};
 
 // ============================================================================
 // TYPOGRAPHY
