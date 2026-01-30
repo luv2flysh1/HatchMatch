@@ -1,4 +1,4 @@
-import { StyleSheet, View, Text, Pressable, Platform } from 'react-native';
+import { StyleSheet, View, Text, Platform } from 'react-native';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useCallback, useMemo, useRef } from 'react';
 import type { WaterBody } from '../types/database';
@@ -15,7 +15,6 @@ export function WaterMapView({ waters, onWaterPress, userLocation }: WaterMapVie
   // Calculate region to fit all markers
   const region = useMemo(() => {
     if (waters.length === 0) {
-      // Default to center of US if no waters
       return {
         latitude: 39.8283,
         longitude: -98.5795,
@@ -27,7 +26,6 @@ export function WaterMapView({ waters, onWaterPress, userLocation }: WaterMapVie
     const lats = waters.map(w => w.latitude);
     const lngs = waters.map(w => w.longitude);
 
-    // Include user location in bounds if available
     if (userLocation) {
       lats.push(userLocation.latitude);
       lngs.push(userLocation.longitude);
@@ -41,7 +39,6 @@ export function WaterMapView({ waters, onWaterPress, userLocation }: WaterMapVie
     const centerLat = (minLat + maxLat) / 2;
     const centerLng = (minLng + maxLng) / 2;
 
-    // Add padding to the deltas
     const latDelta = Math.max((maxLat - minLat) * 1.3, 0.5);
     const lngDelta = Math.max((maxLng - minLng) * 1.3, 0.5);
 
@@ -60,15 +57,15 @@ export function WaterMapView({ waters, onWaterPress, userLocation }: WaterMapVie
   const getMarkerColor = (type: string): string => {
     switch (type) {
       case 'river':
-        return '#2563eb'; // Blue
+        return '#2563eb';
       case 'lake':
-        return '#0891b2'; // Cyan
+        return '#0891b2';
       case 'stream':
-        return '#3b82f6'; // Light blue
+        return '#3b82f6';
       case 'creek':
-        return '#06b6d4'; // Teal
+        return '#06b6d4';
       default:
-        return '#6b7280'; // Gray
+        return '#6b7280';
     }
   };
 

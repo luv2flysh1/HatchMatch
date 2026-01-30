@@ -6,15 +6,31 @@ import {
   Pressable,
   Linking,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
+import { useState, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useFlyBoxStore, ONLINE_SHOPS, FlyBoxItem } from '../stores/flyBoxStore';
+import { supabase } from '../services/supabase';
 
 export default function FlyBoxScreen() {
   const { items, updateQuantity, removeFly, clearBox, getItemCount } = useFlyBoxStore();
+  const [isLoadingShops, setIsLoadingShops] = useState(false);
 
   const totalItems = getItemCount();
+
+  // Get the most common water body name from items
+  const primaryWaterBody = useMemo(() => {
+    const waterCounts: Record<string, number> = {};
+    items.forEach((item) => {
+      if (item.addedFrom) {
+        waterCounts[item.addedFrom] = (waterCounts[item.addedFrom] || 0) + 1;
+      }
+    });
+    const sorted = Object.entries(waterCounts).sort((a, b) => b[1] - a[1]);
+    return sorted.length > 0 ? sorted[0][0] : null;
+  }, [items]);
 
   const handleOpenShop = (url: string) => {
     Linking.openURL(url).catch(() => {
@@ -33,8 +49,44 @@ export default function FlyBoxScreen() {
     );
   };
 
-  const handleFindLocalShops = () => {
-    router.push('/(tabs)/shops');
+  const handleFindLocalShops = async () => {
+    if (!primaryWaterBody) {
+      // No water body associated, just go to shops
+      router.push('/(tabs)/shops');
+      return;
+    }
+
+    setIsLoadingShops(true);
+    try {
+      // Look up the water body coordinates
+      const { data, error } = await supabase
+        .from('water_bodies')
+        .select('latitude, longitude, name')
+        .ilike('name', `%${primaryWaterBody}%`)
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        // Couldn't find water body, just go to shops
+        router.push('/(tabs)/shops');
+        return;
+      }
+
+      // Navigate to shops with coordinates
+      router.push({
+        pathname: '/(tabs)/shops',
+        params: {
+          latitude: data.latitude.toString(),
+          longitude: data.longitude.toString(),
+          waterName: data.name,
+        },
+      });
+    } catch (err) {
+      console.error('Error looking up water body:', err);
+      router.push('/(tabs)/shops');
+    } finally {
+      setIsLoadingShops(false);
+    }
   };
 
   if (items.length === 0) {
@@ -97,12 +149,22 @@ export default function FlyBoxScreen() {
         <View style={styles.shopSection}>
           <Text style={styles.shopSectionTitle}>Where to Buy</Text>
 
-          <Pressable style={styles.localShopsButton} onPress={handleFindLocalShops}>
-            <Text style={styles.localShopsIcon}>📍</Text>
+          <Pressable
+            style={[styles.localShopsButton, isLoadingShops && styles.localShopsButtonDisabled]}
+            onPress={handleFindLocalShops}
+            disabled={isLoadingShops}
+          >
+            {isLoadingShops ? (
+              <ActivityIndicator size="small" color="#ffffff" style={{ marginRight: 12 }} />
+            ) : (
+              <Text style={styles.localShopsIcon}>📍</Text>
+            )}
             <View style={styles.localShopsInfo}>
               <Text style={styles.localShopsTitle}>Find Local Fly Shops</Text>
               <Text style={styles.localShopsSubtitle}>
-                Support local shops near you
+                {primaryWaterBody
+                  ? `Near ${primaryWaterBody}`
+                  : 'Support local shops near you'}
               </Text>
             </View>
           </Pressable>
@@ -326,6 +388,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
+  },
+  localShopsButtonDisabled: {
+    opacity: 0.7,
   },
   localShopsIcon: {
     fontSize: 24,
