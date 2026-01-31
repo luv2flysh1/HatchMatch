@@ -200,10 +200,20 @@ serve(async (req) => {
     }
 
     if (allReports.length === 0) {
+      // No live reports - return shop links so users can check directly
+      const shopLinks = shopsToScrape.map(shop => ({
+        name: shop.name,
+        url: shop.website,
+        reports_url: shop.reports_url,
+      }));
+
       return new Response(
         JSON.stringify({
           report: null,
-          message: 'No current fishing reports available (reports may be outdated)',
+          suggested_shops: shopLinks.length > 0 ? shopLinks : null,
+          message: shopLinks.length > 0
+            ? 'Check these local fly shops for current reports'
+            : 'No fishing report sources found for this water',
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
