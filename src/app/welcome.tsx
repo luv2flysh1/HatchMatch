@@ -8,13 +8,38 @@ import {
   Animated,
   FlatList,
   ViewToken,
+  ImageBackground,
+  ImageSourcePropType,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useOnboardingStore } from '../stores/onboardingStore';
 import { HatchMatchLogo } from '../components/HatchMatchLogo';
 import { colors, typography, spacing, borderRadius, shadows } from '../theme';
+
+// Welcome screen background images
+// Set USE_BACKGROUND_IMAGES to true after adding your photos to assets/images/:
+// - welcome-splash.jpg (main intro screen)
+// - welcome-water.jpg (find your water screen)
+// - welcome-hatch.jpg (match the hatch screen)
+// - welcome-flybox.jpg (build your fly box screen)
+const USE_BACKGROUND_IMAGES = true;
+
+const WELCOME_IMAGES: Record<string, ImageSourcePropType | null> = USE_BACKGROUND_IMAGES
+  ? {
+      splash: require('../../assets/images/welcome-splash.jpg'),
+      'find-water': require('../../assets/images/welcome-water.jpg'),
+      'match-hatch': require('../../assets/images/welcome-hatch.jpg'),
+      'fly-box': require('../../assets/images/welcome-flybox.jpg'),
+    }
+  : {
+      splash: null,
+      'find-water': null,
+      'match-hatch': null,
+      'fly-box': null,
+    };
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,7 +49,7 @@ interface OnboardingSlide {
   subtitle: string;
   description: string;
   iconName: keyof typeof MaterialCommunityIcons.glyphMap;
-  backgroundColor: string;
+  gradientColors: readonly [string, string, string];
   accentColor: string;
 }
 
@@ -35,8 +60,8 @@ const SLIDES: OnboardingSlide[] = [
     subtitle: 'Your AI Fly Fishing Companion',
     description: 'Discover waters, match hatches, and build the perfect fly box for every trip.',
     iconName: 'fish',
-    backgroundColor: colors.primary[800],
-    accentColor: colors.primary[400],
+    gradientColors: ['#1a365d', '#2c5282', '#1e4e8c'] as const,
+    accentColor: '#63b3ed',
   },
   {
     id: 'find-water',
@@ -44,8 +69,8 @@ const SLIDES: OnboardingSlide[] = [
     subtitle: 'Discover Amazing Fishing Spots',
     description: 'Search rivers, lakes, and streams near you. Get detailed information about species, access points, and local conditions.',
     iconName: 'map-search',
-    backgroundColor: colors.tertiary[700],
-    accentColor: colors.tertiary[400],
+    gradientColors: ['#1a4731', '#276749', '#22543d'] as const,
+    accentColor: '#68d391',
   },
   {
     id: 'match-hatch',
@@ -53,8 +78,8 @@ const SLIDES: OnboardingSlide[] = [
     subtitle: 'AI-Powered Fly Recommendations',
     description: 'Get personalized fly recommendations based on current hatches, water conditions, and seasonal patterns.',
     iconName: 'bug',
-    backgroundColor: colors.accent[800],
-    accentColor: colors.accent[400],
+    gradientColors: ['#744210', '#975a16', '#7b341e'] as const,
+    accentColor: '#f6ad55',
   },
   {
     id: 'fly-box',
@@ -62,8 +87,8 @@ const SLIDES: OnboardingSlide[] = [
     subtitle: 'Create Shopping Lists',
     description: 'Save recommended flies to your box, track quantities, and find local shops or online retailers to stock up.',
     iconName: 'briefcase-outline',
-    backgroundColor: colors.secondary[800],
-    accentColor: colors.secondary[400],
+    gradientColors: ['#553c9a', '#6b46c1', '#44337a'] as const,
+    accentColor: '#b794f4',
   },
 ];
 
@@ -132,83 +157,86 @@ export default function WelcomeScreen() {
     });
 
     const isSplash = item.id === 'splash';
+    const backgroundImage = WELCOME_IMAGES[item.id];
 
+    const slideContent = (
+      <View style={[styles.slideContent, { paddingTop: insets.top + 60 }]}>
+        <Animated.View
+          style={[
+            styles.iconContainer,
+            {
+              transform: [{ scale }, { translateY }],
+              opacity,
+            },
+          ]}
+        >
+          {isSplash ? (
+            <HatchMatchLogo size={140} color={colors.neutral[0]} showBackground={true} />
+          ) : (
+            <View
+              style={[
+                styles.featureIconContainer,
+                {
+                  backgroundColor: 'rgba(255,255,255,0.15)',
+                  borderColor: 'rgba(255,255,255,0.3)',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={item.iconName}
+                size={56}
+                color={colors.neutral[0]}
+              />
+            </View>
+          )}
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.textContainer,
+            {
+              opacity,
+              transform: [{ translateY }],
+            },
+          ]}
+        >
+          <Text style={[styles.title, isSplash && styles.splashTitle]}>
+            {item.title}
+          </Text>
+          <Text style={[styles.subtitle, { color: item.accentColor }]}>
+            {item.subtitle}
+          </Text>
+          <Text style={styles.description}>{item.description}</Text>
+        </Animated.View>
+      </View>
+    );
+
+    // Always show gradient as base, with image layered on top (seamless loading)
     return (
-      <View style={[styles.slide, { backgroundColor: item.backgroundColor }]}>
-        <View style={[styles.slideContent, { paddingTop: insets.top + 60 }]}>
-          {/* Decorative elements */}
-          <View style={styles.decorativeContainer}>
-            <View
-              style={[
-                styles.decorativeCircle,
-                styles.decorativeCircle1,
-                { backgroundColor: item.accentColor },
-              ]}
-            />
-            <View
-              style={[
-                styles.decorativeCircle,
-                styles.decorativeCircle2,
-                { backgroundColor: item.accentColor },
-              ]}
-            />
-            <View
-              style={[
-                styles.decorativeCircle,
-                styles.decorativeCircle3,
-                { backgroundColor: item.accentColor },
-              ]}
-            />
-          </View>
-
-          <Animated.View
-            style={[
-              styles.iconContainer,
-              {
-                transform: [{ scale }, { translateY }],
-                opacity,
-              },
-            ]}
+      <View style={styles.slide}>
+        {/* Base gradient - shows while image loads */}
+        <LinearGradient
+          colors={item.gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        {/* Image layer on top of gradient */}
+        {backgroundImage && (
+          <ImageBackground
+            source={backgroundImage}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
           >
-            {isSplash ? (
-              <HatchMatchLogo size={140} color={colors.neutral[0]} showBackground={true} />
-            ) : (
-              <View
-                style={[
-                  styles.featureIconContainer,
-                  {
-                    backgroundColor: `${item.accentColor}30`,
-                    borderColor: `${item.accentColor}50`
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name={item.iconName}
-                  size={56}
-                  color={colors.neutral[0]}
-                />
-              </View>
-            )}
-          </Animated.View>
-
-          <Animated.View
-            style={[
-              styles.textContainer,
-              {
-                opacity,
-                transform: [{ translateY }],
-              },
-            ]}
-          >
-            <Text style={[styles.title, isSplash && styles.splashTitle]}>
-              {item.title}
-            </Text>
-            <Text style={[styles.subtitle, { color: item.accentColor }]}>
-              {item.subtitle}
-            </Text>
-            <Text style={styles.description}>{item.description}</Text>
-          </Animated.View>
-        </View>
+            {/* Dark overlay for text readability */}
+            <LinearGradient
+              colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.6)', 'rgba(0,0,0,0.85)']}
+              locations={[0, 0.5, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+          </ImageBackground>
+        )}
+        {slideContent}
       </View>
     );
   };
@@ -256,7 +284,7 @@ export default function WelcomeScreen() {
   const currentSlide = SLIDES[currentIndex];
 
   return (
-    <View style={[styles.container, { backgroundColor: currentSlide.backgroundColor }]}>
+    <View style={[styles.container, { backgroundColor: currentSlide.gradientColors[0] }]}>
       <Animated.FlatList
         ref={flatListRef}
         data={SLIDES}
@@ -385,38 +413,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
     lineHeight: 24,
-  },
-  decorativeContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    overflow: 'hidden',
-    pointerEvents: 'none',
-  },
-  decorativeCircle: {
-    position: 'absolute',
-    borderRadius: 999,
-    opacity: 0.12,
-  },
-  decorativeCircle1: {
-    width: 300,
-    height: 300,
-    top: -100,
-    right: -100,
-  },
-  decorativeCircle2: {
-    width: 250,
-    height: 250,
-    bottom: 150,
-    left: -100,
-  },
-  decorativeCircle3: {
-    width: 180,
-    height: 180,
-    bottom: 80,
-    right: -60,
   },
   footer: {
     position: 'absolute',
