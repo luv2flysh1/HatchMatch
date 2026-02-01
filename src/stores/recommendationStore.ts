@@ -10,11 +10,18 @@ export interface FishingReport {
   conditions: Record<string, any>;
 }
 
+export interface SuggestedShop {
+  name: string;
+  url: string;
+  reports_url: string;
+}
+
 interface RecommendationState {
   // Data
   recommendations: FlyRecommendation[];
   conditionsSummary: string | null;
   fishingReport: FishingReport | null;
+  suggestedShops: SuggestedShop[] | null;
   lastUpdated: Date | null;
 
   // UI State
@@ -34,6 +41,7 @@ export const useRecommendationStore = create<RecommendationState>((set, get) => 
   recommendations: [],
   conditionsSummary: null,
   fishingReport: null,
+  suggestedShops: null,
   lastUpdated: null,
   isLoading: false,
   error: null,
@@ -50,6 +58,7 @@ export const useRecommendationStore = create<RecommendationState>((set, get) => 
             recommendations: cached.recommendations,
             conditionsSummary: cached.conditions_snapshot?.conditions_summary || null,
             fishingReport: cached.conditions_snapshot?.fishing_report || null,
+            suggestedShops: cached.conditions_snapshot?.suggested_shops || null,
             lastUpdated: new Date(cached.created_at),
             isLoading: false,
           });
@@ -74,6 +83,7 @@ export const useRecommendationStore = create<RecommendationState>((set, get) => 
         recommendations: data.recommendations,
         conditionsSummary: data.conditions_summary || null,
         fishingReport: data.fishing_report || null,
+        suggestedShops: data.suggested_shops || null,
         lastUpdated: new Date(),
         isLoading: false,
       });
@@ -95,6 +105,7 @@ export const useRecommendationStore = create<RecommendationState>((set, get) => 
       recommendations: [],
       conditionsSummary: null,
       fishingReport: null,
+      suggestedShops: null,
       lastUpdated: null,
       error: null,
     });

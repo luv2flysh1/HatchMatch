@@ -108,6 +108,8 @@ serve(async (req) => {
 
     // If no cached reports, try to scrape (call the scrape function)
     let fishingReportData = fishingReports || [];
+    let suggestedShops: Array<{name: string; url: string; reports_url: string}> | null = null;
+
     if (fishingReportData.length === 0) {
       try {
         const scrapeResponse = await fetch(`${supabaseUrl}/functions/v1/scrape-fishing-report`, {
@@ -126,6 +128,10 @@ serve(async (req) => {
           const scrapeData = await scrapeResponse.json();
           if (scrapeData.report) {
             fishingReportData = [scrapeData.report];
+          }
+          // Capture suggested shops if no report was found
+          if (scrapeData.suggested_shops) {
+            suggestedShops = scrapeData.suggested_shops;
           }
         }
       } catch (scrapeError) {
@@ -192,6 +198,7 @@ serve(async (req) => {
         conditions_summary: `Based on ${weather.conditions} conditions with ${weather.temperature}°F air temp.`,
         water_body: waterBody.name,
         fishing_report: fishingReport,
+        suggested_shops: fishingReport ? null : suggestedShops,
         generated_at: new Date().toISOString(),
       }),
       {

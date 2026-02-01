@@ -39,6 +39,7 @@ export default function WaterDetailScreen() {
     recommendations,
     conditionsSummary,
     fishingReport,
+    suggestedShops,
     lastUpdated,
     isLoading: isLoadingRecs,
     error: recsError,
@@ -313,6 +314,29 @@ export default function WaterDetailScreen() {
             <Text style={styles.fishingReportDate}>
               Updated {formatReportDate(fishingReport.report_date)}
             </Text>
+          </View>
+        )}
+
+        {/* Suggested Fly Shops - shown when no fishing report available */}
+        {!fishingReport && suggestedShops && suggestedShops.length > 0 && (
+          <View style={styles.suggestedShopsSection}>
+            <View style={styles.suggestedShopsHeader}>
+              <Ionicons name="storefront-outline" size={18} color={colors.secondary[600]} />
+              <Text style={styles.suggestedShopsTitle}>Local Fly Shops</Text>
+            </View>
+            <Text style={styles.suggestedShopsSubtitle}>
+              Check these shops for current fishing reports
+            </Text>
+            {suggestedShops.map((shop, index) => (
+              <Pressable
+                key={index}
+                style={styles.shopLink}
+                onPress={() => Linking.openURL(shop.reports_url || shop.url)}
+              >
+                <Text style={styles.shopName}>{shop.name}</Text>
+                <Ionicons name="open-outline" size={16} color={colors.secondary[500]} />
+              </Pressable>
+            ))}
           </View>
         )}
 
@@ -839,6 +863,48 @@ const styles = StyleSheet.create({
   fishingReportDate: {
     fontSize: 11,
     color: colors.text.tertiary,
+  },
+  // Suggested Fly Shops
+  suggestedShopsSection: {
+    backgroundColor: colors.secondary[50],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginBottom: spacing[4],
+    padding: spacing[4],
+    borderRadius: borderRadius.card,
+    borderWidth: 1,
+    borderColor: colors.secondary[200],
+  },
+  suggestedShopsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[1],
+  },
+  suggestedShopsTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.secondary[700],
+  },
+  suggestedShopsSubtitle: {
+    fontSize: 13,
+    color: colors.text.secondary,
+    marginBottom: spacing[3],
+    marginLeft: spacing[6],
+  },
+  shopLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.background.primary,
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2.5],
+    borderRadius: borderRadius.md,
+    marginBottom: spacing[2],
+  },
+  shopName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.secondary[600],
   },
   // Section
   section: {
