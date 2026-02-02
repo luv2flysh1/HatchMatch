@@ -110,8 +110,30 @@ serve(async (req) => {
     let fishingReportData = fishingReports || [];
     let suggestedShops: Array<{name: string; url: string; reports_url: string}> | null = null;
 
+    // Get suggested shops directly from database (fast path)
+    if (fishingReportData.length === 0) {
+      const { data: shopSources } = await supabase
+        .from('fly_shop_sources')
+        .select('name, website, reports_url')
+        .eq('is_active', true)
+        .contains('waters_covered', [waterBody.name])
+        .limit(5);
+
+      if (shopSources && shopSources.length > 0) {
+        suggestedShops = shopSources.map(s => ({
+          name: s.name,
+          url: s.website,
+          reports_url: s.reports_url,
+        }));
+      }
+    }
+
     if (fishingReportData.length === 0) {
       try {
+        // Use AbortController for timeout (15 seconds max for scraping)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
         const scrapeResponse = await fetch(`${supabaseUrl}/functions/v1/scrape-fishing-report`, {
           method: 'POST',
           headers: {
@@ -122,7 +144,10 @@ serve(async (req) => {
             water_body_id,
             water_body_name: waterBody.name,
           }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (scrapeResponse.ok) {
           const scrapeData = await scrapeResponse.json();
@@ -135,7 +160,7 @@ serve(async (req) => {
           }
         }
       } catch (scrapeError) {
-        console.log('Could not fetch fishing report:', scrapeError);
+        console.log('Could not fetch fishing report (timeout or error):', scrapeError);
         // Continue without fishing report - not critical
       }
     }
