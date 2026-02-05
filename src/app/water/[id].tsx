@@ -9,8 +9,10 @@ import {
   Image,
   Linking,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,12 +21,14 @@ import { useWaterStore } from '../../stores/waterStore';
 import { useRecommendationStore, FishingReport } from '../../stores/recommendationStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useFlyBoxStore } from '../../stores/flyBoxStore';
+import { useTripStore } from '../../stores/tripStore';
 import { getRegulationsUrl, hasRegulationsInfo } from '../../utils/fishingRegulations';
 import { colors, gradients, shadows, spacing, borderRadius, layout } from '../../theme';
-import type { FlyRecommendation } from '../../types/database';
+import type { FlyRecommendation, Trip } from '../../types/database';
 
 export default function WaterDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const { user } = useAuthStore();
   const {
     selectedWater,
@@ -48,11 +52,14 @@ export default function WaterDetailScreen() {
   } = useRecommendationStore();
 
   const { addFly, isInBox } = useFlyBoxStore();
+  const { trips, fetchTrips, addWaterToTrip } = useTripStore();
 
   const [isFav, setIsFav] = useState(false);
   const [isTogglingFav, setIsTogglingFav] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [boxCreated, setBoxCreated] = useState(false);
+  const [showTripPicker, setShowTripPicker] = useState(false);
+  const [addingToTripId, setAddingToTripId] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -131,6 +138,20 @@ export default function WaterDetailScreen() {
     });
     setBoxCreated(true);
   }, [selectedWater, recommendations, addFly]);
+
+  const handleOpenTripPicker = useCallback(() => {
+    if (!user) return;
+    fetchTrips();
+    setShowTripPicker(true);
+  }, [user, fetchTrips]);
+
+  const handleAddToTrip = useCallback(async (tripId: string) => {
+    if (!id) return;
+    setAddingToTripId(tripId);
+    await addWaterToTrip(tripId, id);
+    setAddingToTripId(null);
+    setShowTripPicker(false);
+  }, [id, addWaterToTrip]);
 
   const handleAddFlyToBox = useCallback((fly: FlyRecommendation) => {
     if (!selectedWater) return;
@@ -446,6 +467,8 @@ export default function WaterDetailScreen() {
               styles.addToTripButton,
               pressed && styles.buttonPressed,
             ]}
+            onPress={handleOpenTripPicker}
+            disabled={!user}
           >
             <LinearGradient
               colors={gradients.primaryButton}
@@ -454,7 +477,9 @@ export default function WaterDetailScreen() {
               style={styles.addToTripButtonGradient}
             >
               <Ionicons name="calendar-outline" size={20} color={colors.text.inverse} />
-              <Text style={styles.addToTripButtonText}>Add to Trip</Text>
+              <Text style={styles.addToTripButtonText}>
+                {user ? 'Add to Trip' : 'Sign in to Add to Trip'}
+              </Text>
             </LinearGradient>
           </Pressable>
           <Pressable
@@ -483,6 +508,80 @@ export default function WaterDetailScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      {/* Trip Picker Modal */}
+      <Modal
+        visible={showTripPicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowTripPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Add to Trip</Text>
+              <Pressable onPress={() => setShowTripPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.text.secondary} />
+              </Pressable>
+            </View>
+
+            {trips.length === 0 ? (
+              <View style={styles.modalEmpty}>
+                <Text style={styles.modalEmptyText}>No trips yet</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={trips.filter(t => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const end = t.end_date
+                    ? new Date(t.end_date + 'T23:59:59')
+                    : new Date(t.start_date + 'T23:59:59');
+                  return end >= today;
+                })}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item: trip }) => (
+                  <Pressable
+                    style={styles.tripPickerItem}
+                    onPress={() => handleAddToTrip(trip.id)}
+                    disabled={addingToTripId === trip.id}
+                  >
+                    <View style={styles.tripPickerInfo}>
+                      <Text style={styles.tripPickerName}>{trip.name}</Text>
+                      <Text style={styles.tripPickerDate}>
+                        {new Date(trip.start_date + 'T00:00:00').toLocaleDateString('en-US', {
+                          month: 'short', day: 'numeric', year: 'numeric',
+                        })}
+                      </Text>
+                    </View>
+                    {addingToTripId === trip.id ? (
+                      <ActivityIndicator size="small" color={colors.primary[500]} />
+                    ) : (
+                      <Ionicons name="add-circle-outline" size={24} color={colors.primary[500]} />
+                    )}
+                  </Pressable>
+                )}
+                ListEmptyComponent={
+                  <View style={styles.modalEmpty}>
+                    <Text style={styles.modalEmptyText}>No upcoming trips</Text>
+                  </View>
+                }
+              />
+            )}
+
+            <Pressable
+              style={styles.createTripFromModal}
+              onPress={() => {
+                setShowTripPicker(false);
+                router.push('/trip/create');
+              }}
+            >
+              <Ionicons name="add" size={20} color={colors.primary[500]} />
+              <Text style={styles.createTripFromModalText}>Create New Trip</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1197,5 +1296,80 @@ const styles = StyleSheet.create({
   },
   favoriteButtonTextActive: {
     color: colors.text.inverse,
+  },
+  // Trip Picker Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: colors.background.overlay,
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: colors.background.primary,
+    borderTopLeftRadius: borderRadius.xl,
+    borderTopRightRadius: borderRadius.xl,
+    maxHeight: '60%',
+    paddingBottom: spacing[8],
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingVertical: spacing[4],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text.primary,
+  },
+  modalEmpty: {
+    padding: spacing[8],
+    alignItems: 'center',
+  },
+  modalEmptyText: {
+    fontSize: 14,
+    color: colors.text.tertiary,
+  },
+  tripPickerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: layout.screenPaddingHorizontal,
+    paddingVertical: spacing[3.5],
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.light,
+  },
+  tripPickerInfo: {
+    flex: 1,
+  },
+  tripPickerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  tripPickerDate: {
+    fontSize: 13,
+    color: colors.text.tertiary,
+    marginTop: spacing[0.5],
+  },
+  createTripFromModal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    paddingVertical: spacing[3.5],
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[3],
+    borderRadius: borderRadius.button,
+    borderWidth: 1.5,
+    borderColor: colors.primary[300],
+    borderStyle: 'dashed',
+  },
+  createTripFromModalText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.primary[500],
   },
 });

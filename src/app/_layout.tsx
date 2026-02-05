@@ -67,6 +67,32 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen
+          name="trip/create"
+          options={{
+            title: 'New Trip',
+            presentation: 'modal',
+            headerStyle: { backgroundColor: colors.primary[500] },
+            headerTintColor: colors.neutral[0],
+          }}
+        />
+        <Stack.Screen
+          name="trip/edit"
+          options={{
+            title: 'Edit Trip',
+            headerStyle: { backgroundColor: colors.primary[500] },
+            headerTintColor: colors.neutral[0],
+          }}
+        />
+        <Stack.Screen
+          name="trip/add-water"
+          options={{
+            title: 'Add Water',
+            presentation: 'modal',
+            headerStyle: { backgroundColor: colors.primary[500] },
+            headerTintColor: colors.neutral[0],
+          }}
+        />
+        <Stack.Screen
           name="flybox"
           options={{
             title: 'Fly Box',

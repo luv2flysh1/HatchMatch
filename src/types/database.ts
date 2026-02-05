@@ -61,6 +61,18 @@ export interface TripWater {
   trip_id: string;
   water_body_id: string;
   order: number;
+  water_body?: WaterBody;
+}
+
+export interface TripWithWaters extends Trip {
+  trip_waters: TripWater[];
+}
+
+export interface CreateTripInput {
+  name: string;
+  start_date: string;
+  end_date?: string | null;
+  notes?: string | null;
 }
 
 export interface CatchReport {
@@ -138,5 +150,16 @@ export interface FlyRecommendation {
   reasoning: string;
   size: string;
   technique: string;
+  image_url?: string | null;
+}
+
+export interface TripFlyRecommendation {
+  fly_name: string;
+  fly_type: FlyType;
+  size: string;
+  confidence: number;
+  technique: string;
+  reasoning: string;
+  waters: string[];
   image_url?: string | null;
 }

@@ -9,12 +9,14 @@ interface AuthState {
   session: Session | null;
   isLoading: boolean;
   isInitialized: boolean;
+  resetPasswordSent: boolean;
 
   // Actions
   initialize: () => Promise<void>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
   fetchProfile: () => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: Error | null }>;
 }
@@ -25,6 +27,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   isLoading: false,
   isInitialized: false,
+  resetPasswordSent: false,
 
   initialize: async () => {
     try {
@@ -110,9 +113,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       await supabase.auth.signOut();
-      set({ user: null, profile: null, session: null });
+      set({ user: null, profile: null, session: null, resetPasswordSent: false });
     } catch (error) {
       console.error('Sign out error:', error);
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  resetPassword: async (email: string) => {
+    set({ isLoading: true, resetPasswordSent: false });
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        return { error };
+      }
+      set({ resetPasswordSent: true });
+      return { error: null };
+    } catch (error) {
+      return { error: error as Error };
     } finally {
       set({ isLoading: false });
     }

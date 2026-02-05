@@ -6,89 +6,90 @@ import {
   FlatList,
   ActivityIndicator,
   Linking,
-  Image,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useLocation } from '../../hooks/useLocation';
 import { supabase } from '../../services/supabase';
+import { colors, spacing, borderRadius, shadows, layout } from '../../theme';
 
 interface FlyShop {
   id: string;
   name: string;
-  rating: number;
-  reviewCount: number;
-  phone: string;
-  address: string;
+  address: string | null;
   city: string;
   state: string;
-  distance: number;
-  distanceMiles: string;
-  coordinates: { latitude: number; longitude: number };
-  imageUrl: string;
-  url: string;
-  categories: string[];
-  isFlyShop: boolean;
+  latitude: number;
+  longitude: number;
+  phone: string | null;
+  website: string | null;
+  distance?: number;
+}
+
+function calculateDistance(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 3959;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 }
 
 export default function ShopsScreen() {
-  const params = useLocalSearchParams<{
-    latitude?: string;
-    longitude?: string;
-    waterName?: string;
-  }>();
-
   const [shops, setShops] = useState<FlyShop[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchLocation, setSearchLocation] = useState<{
-    latitude: number;
-    longitude: number;
-    name?: string;
-  } | null>(null);
+  const [searched, setSearched] = useState(false);
 
   const { getCurrentLocation, isLoading: isLoadingLocation } = useLocation();
 
-  // Check for passed location params on mount
-  useEffect(() => {
-    if (params.latitude && params.longitude) {
-      const lat = parseFloat(params.latitude);
-      const lng = parseFloat(params.longitude);
-      if (!isNaN(lat) && !isNaN(lng)) {
-        setSearchLocation({
-          latitude: lat,
-          longitude: lng,
-          name: params.waterName,
-        });
-      }
-    }
-  }, [params.latitude, params.longitude, params.waterName]);
+  const handleSearchNearMe = useCallback(async () => {
+    const location = await getCurrentLocation();
+    if (!location) return;
 
-  // Auto-search when location is set
-  useEffect(() => {
-    if (searchLocation) {
-      searchNearLocation(searchLocation.latitude, searchLocation.longitude);
-    }
-  }, [searchLocation]);
-
-  const searchNearLocation = async (latitude: number, longitude: number) => {
     setIsLoading(true);
     setError(null);
+    setSearched(true);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('search-fly-shops', {
-        body: { latitude, longitude, radius: 40000 },
-      });
+      // Query fly_shops table directly
+      const { data, error: dbError } = await supabase
+        .from('fly_shops')
+        .select('*');
 
-      if (fnError) {
-        throw new Error(fnError.message);
+      if (dbError) {
+        throw new Error(dbError.message);
       }
 
-      setShops(data.shops || []);
+      if (!data || data.length === 0) {
+        setShops([]);
+        setError('No fly shops in our database yet. This feature is coming soon.');
+        return;
+      }
 
-      if (data.shops?.length === 0) {
-        setError('No fly shops found within 25 miles. Try searching a different area.');
+      // Calculate distances and sort
+      const withDistance = data
+        .map(shop => ({
+          ...shop,
+          distance: calculateDistance(
+            location.latitude, location.longitude,
+            shop.latitude, shop.longitude
+          ),
+        }))
+        .filter(shop => shop.distance <= 100)
+        .sort((a, b) => a.distance - b.distance);
+
+      setShops(withDistance);
+
+      if (withDistance.length === 0) {
+        setError('No fly shops found within 100 miles. We\'re still building our database.');
       }
     } catch (err) {
       console.error('Error searching fly shops:', err);
@@ -96,98 +97,58 @@ export default function ShopsScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleSearchNearMe = useCallback(async () => {
-    const location = await getCurrentLocation();
-    if (location) {
-      setSearchLocation({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        name: 'your location',
-      });
-    }
   }, [getCurrentLocation]);
 
   const handleCall = (phone: string) => {
-    if (phone) {
-      Linking.openURL(`tel:${phone.replace(/[^0-9]/g, '')}`);
-    }
+    Linking.openURL(`tel:${phone.replace(/[^0-9]/g, '')}`);
   };
 
   const handleDirections = (shop: FlyShop) => {
-    const { latitude, longitude } = shop.coordinates;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}`;
     Linking.openURL(url);
   };
 
-  const handleOpenYelp = (url: string) => {
-    Linking.openURL(url);
+  const handleWebsite = (website: string) => {
+    Linking.openURL(website.startsWith('http') ? website : `https://${website}`);
   };
 
   const renderShopItem = ({ item }: { item: FlyShop }) => (
     <View style={styles.shopCard}>
-      {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} style={styles.shopImage} />
-      ) : (
-        <View style={[styles.shopImage, styles.shopImagePlaceholder]}>
-          <Text style={styles.shopImagePlaceholderText}>No Image</Text>
-        </View>
-      )}
       <View style={styles.shopInfo}>
         <View style={styles.shopHeader}>
-          <Text style={styles.shopName} numberOfLines={1}>
-            {item.name}
-          </Text>
-          {item.isFlyShop && (
-            <View style={styles.flyShopBadge}>
-              <Text style={styles.flyShopBadgeText}>Fly Shop</Text>
-            </View>
-          )}
+          <Ionicons name="storefront-outline" size={20} color={colors.secondary[500]} />
+          <Text style={styles.shopName} numberOfLines={1}>{item.name}</Text>
         </View>
 
-        <View style={styles.shopMeta}>
-          {item.rating > 0 && (
-            <Text style={styles.rating}>
-              {'★'.repeat(Math.round(item.rating))} {item.rating.toFixed(1)} ({item.reviewCount})
-            </Text>
-          )}
-          <Text style={styles.distance}>{item.distanceMiles} mi</Text>
-        </View>
-
-        <Text style={styles.address} numberOfLines={2}>
-          {item.address}
+        <Text style={styles.shopLocation}>
+          {item.city}, {item.state}
+          {item.distance !== undefined && ` · ${item.distance.toFixed(1)} mi`}
         </Text>
 
-        {item.categories.length > 0 && (
-          <Text style={styles.categories} numberOfLines={1}>
-            {item.categories.slice(0, 3).join(' • ')}
-          </Text>
+        {item.address && (
+          <Text style={styles.shopAddress} numberOfLines={2}>{item.address}</Text>
         )}
 
         <View style={styles.shopActions}>
           {item.phone && (
-            <Pressable
-              style={styles.actionButton}
-              onPress={() => handleCall(item.phone)}
-            >
+            <Pressable style={styles.actionButton} onPress={() => handleCall(item.phone!)}>
+              <Ionicons name="call-outline" size={14} color={colors.text.inverse} />
               <Text style={styles.actionButtonText}>Call</Text>
             </Pressable>
           )}
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => handleDirections(item)}
-          >
+          <Pressable style={styles.actionButton} onPress={() => handleDirections(item)}>
+            <Ionicons name="navigate-outline" size={14} color={colors.text.inverse} />
             <Text style={styles.actionButtonText}>Directions</Text>
           </Pressable>
-          <Pressable
-            style={[styles.actionButton, styles.actionButtonOutline]}
-            onPress={() => handleOpenYelp(item.url)}
-          >
-            <Text style={[styles.actionButtonText, styles.actionButtonTextOutline]}>
-              Yelp
-            </Text>
-          </Pressable>
+          {item.website && (
+            <Pressable
+              style={[styles.actionButton, styles.actionButtonOutline]}
+              onPress={() => handleWebsite(item.website!)}
+            >
+              <Ionicons name="globe-outline" size={14} color={colors.primary[500]} />
+              <Text style={styles.actionButtonTextOutline}>Website</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </View>
@@ -196,34 +157,30 @@ export default function ShopsScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
       <Pressable
-        style={[styles.nearbyButton, isLoadingLocation && styles.nearbyButtonDisabled]}
+        style={[styles.nearbyButton, (isLoadingLocation || isLoading) && styles.nearbyButtonDisabled]}
         onPress={handleSearchNearMe}
         disabled={isLoadingLocation || isLoading}
       >
-        {isLoadingLocation ? (
-          <ActivityIndicator size="small" color="#ffffff" />
+        {isLoadingLocation || isLoading ? (
+          <ActivityIndicator size="small" color={colors.text.inverse} />
         ) : (
-          <Text style={styles.nearbyButtonText}>Find Fly Shops Near Me</Text>
+          <>
+            <Ionicons name="location-outline" size={20} color={colors.text.inverse} />
+            <Text style={styles.nearbyButtonText}>Find Fly Shops Near Me</Text>
+          </>
         )}
       </Pressable>
 
-      {searchLocation && (
-        <View style={styles.searchInfo}>
-          <Text style={styles.searchInfoText}>
-            Showing fly shops near {searchLocation.name || 'selected location'}
-          </Text>
-        </View>
-      )}
-
       {error && (
         <View style={styles.errorBanner}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.warning.main} />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563eb" />
+          <ActivityIndicator size="large" color={colors.primary[500]} />
           <Text style={styles.loadingText}>Searching for fly shops...</Text>
         </View>
       ) : shops.length > 0 ? (
@@ -234,12 +191,13 @@ export default function ShopsScreen() {
           contentContainerStyle={styles.shopsList}
           showsVerticalScrollIndicator={false}
         />
-      ) : !searchLocation ? (
+      ) : !searched ? (
         <View style={styles.placeholder}>
+          <Ionicons name="storefront-outline" size={56} color={colors.neutral[300]} />
           <Text style={styles.placeholderTitle}>Fly Shop Finder</Text>
           <Text style={styles.placeholderText}>
             Find fly shops near your location or near a fishing destination.
-            Tap "Find Fly Shops Near Me" to get started.
+            Tap the button above to get started.
           </Text>
         </View>
       ) : null}
@@ -250,48 +208,43 @@ export default function ShopsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: colors.background.secondary,
   },
   nearbyButton: {
-    margin: 16,
-    marginBottom: 8,
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    padding: 14,
+    margin: layout.screenPaddingHorizontal,
+    marginBottom: spacing[2],
+    backgroundColor: colors.secondary[500],
+    borderRadius: borderRadius.lg,
+    padding: spacing[3.5],
+    flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 48,
     justifyContent: 'center',
+    gap: spacing[2],
+    minHeight: 48,
+    ...shadows.md,
   },
   nearbyButtonDisabled: {
     opacity: 0.7,
   },
   nearbyButtonText: {
-    color: '#ffffff',
+    color: colors.text.inverse,
     fontSize: 16,
     fontWeight: '600',
   },
-  searchInfo: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  searchInfoText: {
-    fontSize: 13,
-    color: '#6b7280',
-    fontStyle: 'italic',
-  },
   errorBanner: {
-    margin: 16,
-    marginTop: 8,
-    padding: 12,
-    backgroundColor: '#fef2f2',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#fecaca',
+    marginHorizontal: layout.screenPaddingHorizontal,
+    marginTop: spacing[2],
+    padding: spacing[3],
+    backgroundColor: colors.warning.light,
+    borderRadius: borderRadius.base,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
   },
   errorText: {
-    color: '#dc2626',
-    fontSize: 14,
-    textAlign: 'center',
+    color: colors.warning.dark,
+    fontSize: 13,
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -299,125 +252,91 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 12,
+    marginTop: spacing[3],
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.tertiary,
   },
   shopsList: {
-    padding: 16,
-    paddingTop: 8,
+    padding: layout.screenPaddingHorizontal,
+    paddingTop: spacing[2],
+    paddingBottom: spacing[8],
   },
   shopCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-  },
-  shopImage: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#f3f4f6',
-  },
-  shopImagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shopImagePlaceholderText: {
-    color: '#9ca3af',
-    fontSize: 14,
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.card,
+    marginBottom: spacing[3],
+    ...shadows.sm,
   },
   shopInfo: {
-    padding: 12,
+    padding: spacing[4],
   },
   shopHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: spacing[2],
+    marginBottom: spacing[1],
   },
   shopName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: colors.text.primary,
     flex: 1,
   },
-  flyShopBadge: {
-    backgroundColor: '#dcfce7',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-    marginLeft: 8,
-  },
-  flyShopBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#16a34a',
-  },
-  shopMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  rating: {
+  shopLocation: {
     fontSize: 13,
-    color: '#f59e0b',
-    marginRight: 12,
-  },
-  distance: {
-    fontSize: 13,
-    color: '#2563eb',
+    color: colors.primary[500],
     fontWeight: '500',
+    marginBottom: spacing[1],
   },
-  address: {
+  shopAddress: {
     fontSize: 13,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-  categories: {
-    fontSize: 12,
-    color: '#9ca3af',
-    marginBottom: 8,
+    color: colors.text.tertiary,
+    marginBottom: spacing[3],
   },
   shopActions: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
+    gap: spacing[2],
   },
   actionButton: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 6,
+    backgroundColor: colors.primary[500],
+    paddingHorizontal: spacing[3],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.base,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+  },
+  actionButtonText: {
+    color: colors.text.inverse,
+    fontSize: 13,
+    fontWeight: '500',
   },
   actionButtonOutline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  actionButtonText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '500',
+    borderColor: colors.primary[200],
   },
   actionButtonTextOutline: {
-    color: '#6b7280',
+    color: colors.primary[500],
+    fontSize: 13,
+    fontWeight: '500',
   },
   placeholder: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: spacing[8],
   },
   placeholderTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 8,
+    color: colors.text.secondary,
+    marginTop: spacing[4],
+    marginBottom: spacing[2],
   },
   placeholderText: {
     fontSize: 14,
-    color: '#6b7280',
+    color: colors.text.tertiary,
     textAlign: 'center',
     lineHeight: 20,
   },
