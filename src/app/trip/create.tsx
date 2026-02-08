@@ -47,6 +47,7 @@ export default function CreateTripScreen() {
   const [editingEndDate, setEditingEndDate] = useState(false);
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
+  const [dateInputError, setDateInputError] = useState<string | null>(null);
 
   const validateDate = (dateStr: string): boolean => {
     const regex = /^\d{4}-\d{2}-\d{2}$/;
@@ -95,17 +96,23 @@ export default function CreateTripScreen() {
   };
 
   const handleStartDateConfirm = () => {
+    setDateInputError(null);
     if (validateDate(startDateInput)) {
       setStartDate(startDateInput);
+      setEditingStartDate(false);
+    } else {
+      setDateInputError('Enter date as YYYY-MM-DD (e.g., 2026-03-15)');
     }
-    setEditingStartDate(false);
   };
 
   const handleEndDateConfirm = () => {
+    setDateInputError(null);
     if (validateDate(endDateInput)) {
       setEndDate(endDateInput);
+      setEditingEndDate(false);
+    } else {
+      setDateInputError('Enter date as YYYY-MM-DD (e.g., 2026-03-15)');
     }
-    setEditingEndDate(false);
   };
 
   return (
@@ -141,18 +148,26 @@ export default function CreateTripScreen() {
           {/* Start Date */}
           <Text style={styles.label}>Start Date *</Text>
           {editingStartDate ? (
-            <View style={styles.dateEditRow}>
+            <View>
               <TextInput
-                style={[styles.input, styles.dateInput]}
+                style={[styles.input, dateInputError && styles.inputError]}
                 value={startDateInput}
-                onChangeText={setStartDateInput}
-                placeholder="YYYY-MM-DD"
+                onChangeText={(text) => {
+                  setStartDateInput(text);
+                  setDateInputError(null);
+                }}
+                placeholder="YYYY-MM-DD (e.g., 2026-03-15)"
                 placeholderTextColor={colors.neutral[400]}
                 keyboardType="numbers-and-punctuation"
                 autoFocus
-                onBlur={handleStartDateConfirm}
                 onSubmitEditing={handleStartDateConfirm}
               />
+              {dateInputError && (
+                <Text style={styles.dateInputError}>{dateInputError}</Text>
+              )}
+              <Pressable style={styles.confirmDateButton} onPress={handleStartDateConfirm}>
+                <Text style={styles.confirmDateButtonText}>Confirm Date</Text>
+              </Pressable>
             </View>
           ) : (
             <Pressable
@@ -194,18 +209,26 @@ export default function CreateTripScreen() {
                 </Pressable>
               </View>
               {editingEndDate ? (
-                <View style={styles.dateEditRow}>
+                <View>
                   <TextInput
-                    style={[styles.input, styles.dateInput]}
+                    style={[styles.input, dateInputError && styles.inputError]}
                     value={endDateInput}
-                    onChangeText={setEndDateInput}
-                    placeholder="YYYY-MM-DD"
+                    onChangeText={(text) => {
+                      setEndDateInput(text);
+                      setDateInputError(null);
+                    }}
+                    placeholder="YYYY-MM-DD (e.g., 2026-03-15)"
                     placeholderTextColor={colors.neutral[400]}
                     keyboardType="numbers-and-punctuation"
                     autoFocus
-                    onBlur={handleEndDateConfirm}
                     onSubmitEditing={handleEndDateConfirm}
                   />
+                  {dateInputError && (
+                    <Text style={styles.dateInputError}>{dateInputError}</Text>
+                  )}
+                  <Pressable style={styles.confirmDateButton} onPress={handleEndDateConfirm}>
+                    <Text style={styles.confirmDateButtonText}>Confirm Date</Text>
+                  </Pressable>
                 </View>
               ) : (
                 <Pressable
@@ -331,12 +354,26 @@ const styles = StyleSheet.create({
     color: colors.text.primary,
     flex: 1,
   },
-  dateEditRow: {
-    flexDirection: 'row',
-    gap: spacing[2],
+  inputError: {
+    borderColor: colors.error.main,
   },
-  dateInput: {
-    flex: 1,
+  dateInputError: {
+    color: colors.error.main,
+    fontSize: 12,
+    marginTop: spacing[1],
+  },
+  confirmDateButton: {
+    backgroundColor: colors.primary[100],
+    borderRadius: borderRadius.base,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    alignSelf: 'flex-start',
+    marginTop: spacing[2],
+  },
+  confirmDateButtonText: {
+    color: colors.primary[600],
+    fontSize: 14,
+    fontWeight: '500',
   },
   addEndDateButton: {
     flexDirection: 'row',

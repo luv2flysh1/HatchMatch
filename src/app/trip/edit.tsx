@@ -42,6 +42,7 @@ export default function EditTripScreen() {
   const [editingEndDate, setEditingEndDate] = useState(false);
   const [startDateInput, setStartDateInput] = useState('');
   const [endDateInput, setEndDateInput] = useState('');
+  const [dateInputError, setDateInputError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id && !currentTrip) {
@@ -121,17 +122,23 @@ export default function EditTripScreen() {
   };
 
   const handleStartDateConfirm = () => {
+    setDateInputError(null);
     if (validateDate(startDateInput)) {
       setStartDate(startDateInput);
+      setEditingStartDate(false);
+    } else {
+      setDateInputError('Enter date as YYYY-MM-DD (e.g., 2026-03-15)');
     }
-    setEditingStartDate(false);
   };
 
   const handleEndDateConfirm = () => {
+    setDateInputError(null);
     if (validateDate(endDateInput)) {
       setEndDate(endDateInput);
+      setEditingEndDate(false);
+    } else {
+      setDateInputError('Enter date as YYYY-MM-DD (e.g., 2026-03-15)');
     }
-    setEditingEndDate(false);
   };
 
   if (!currentTrip) {
@@ -176,17 +183,27 @@ export default function EditTripScreen() {
           {/* Start Date */}
           <Text style={styles.label}>Start Date *</Text>
           {editingStartDate ? (
-            <TextInput
-              style={styles.input}
-              value={startDateInput}
-              onChangeText={setStartDateInput}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.neutral[400]}
-              keyboardType="numbers-and-punctuation"
-              autoFocus
-              onBlur={handleStartDateConfirm}
-              onSubmitEditing={handleStartDateConfirm}
-            />
+            <View>
+              <TextInput
+                style={[styles.input, dateInputError && styles.inputError]}
+                value={startDateInput}
+                onChangeText={(text) => {
+                  setStartDateInput(text);
+                  setDateInputError(null);
+                }}
+                placeholder="YYYY-MM-DD (e.g., 2026-03-15)"
+                placeholderTextColor={colors.neutral[400]}
+                keyboardType="numbers-and-punctuation"
+                autoFocus
+                onSubmitEditing={handleStartDateConfirm}
+              />
+              {dateInputError && (
+                <Text style={styles.dateInputError}>{dateInputError}</Text>
+              )}
+              <Pressable style={styles.confirmDateButton} onPress={handleStartDateConfirm}>
+                <Text style={styles.confirmDateButtonText}>Confirm Date</Text>
+              </Pressable>
+            </View>
           ) : (
             <Pressable
               style={styles.dateButton}
@@ -228,17 +245,27 @@ export default function EditTripScreen() {
                 </Pressable>
               </View>
               {editingEndDate ? (
-                <TextInput
-                  style={styles.input}
-                  value={endDateInput}
-                  onChangeText={setEndDateInput}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colors.neutral[400]}
-                  keyboardType="numbers-and-punctuation"
-                  autoFocus
-                  onBlur={handleEndDateConfirm}
-                  onSubmitEditing={handleEndDateConfirm}
-                />
+                <View>
+                  <TextInput
+                    style={[styles.input, dateInputError && styles.inputError]}
+                    value={endDateInput}
+                    onChangeText={(text) => {
+                      setEndDateInput(text);
+                      setDateInputError(null);
+                    }}
+                    placeholder="YYYY-MM-DD (e.g., 2026-03-15)"
+                    placeholderTextColor={colors.neutral[400]}
+                    keyboardType="numbers-and-punctuation"
+                    autoFocus
+                    onSubmitEditing={handleEndDateConfirm}
+                  />
+                  {dateInputError && (
+                    <Text style={styles.dateInputError}>{dateInputError}</Text>
+                  )}
+                  <Pressable style={styles.confirmDateButton} onPress={handleEndDateConfirm}>
+                    <Text style={styles.confirmDateButtonText}>Confirm Date</Text>
+                  </Pressable>
+                </View>
               ) : (
                 <Pressable
                   style={styles.dateButton}
@@ -373,6 +400,27 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.text.primary,
     flex: 1,
+  },
+  inputError: {
+    borderColor: colors.error.main,
+  },
+  dateInputError: {
+    color: colors.error.main,
+    fontSize: 12,
+    marginTop: spacing[1],
+  },
+  confirmDateButton: {
+    backgroundColor: colors.primary[100],
+    borderRadius: borderRadius.base,
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    alignSelf: 'flex-start',
+    marginTop: spacing[2],
+  },
+  confirmDateButtonText: {
+    color: colors.primary[600],
+    fontSize: 14,
+    fontWeight: '500',
   },
   addEndDateButton: {
     flexDirection: 'row',
