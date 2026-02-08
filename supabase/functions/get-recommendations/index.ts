@@ -435,12 +435,16 @@ IMPORTANT GUIDELINES:
 1. **HIGHEST PRIORITY**: Fly shop reports are from professionals - their recommendations should heavily influence yours
 2. User catch reports with high effectiveness (4-5 rating) are strong signals of what's working NOW
 3. Prioritize flies that are PROVEN PRODUCERS for this specific type of water
-3. Consider the current month and what food sources are most abundant NOW
-4. Match fly size to the actual insects/food present at this time of year
-5. For spring creeks: Scuds, sowbugs, midges, and small mayflies are usually top producers
-6. For tailwaters: Midges, scuds, and small mayflies dominate year-round
-7. For freestone rivers: Match seasonal hatches - stoneflies in spring, terrestrials in summer, BWOs in fall
-8. Consider water temperature and fish feeding behavior for the conditions
+4. **CRITICAL - SEASONAL ACCURACY**: Only recommend flies appropriate for the CURRENT MONTH:
+   - WINTER (Dec-Feb): Midges, small nymphs, scuds, sowbugs, BWOs, streamers. NO terrestrials, NO large stonefly dries, NO hoppers
+   - SPRING (Mar-May): BWOs, Hendricksons, March Browns, caddis starting, stonefly NYMPHS (not dries yet)
+   - SUMMER (Jun-Aug): Terrestrials (hoppers, ants, beetles), PMDs, caddis, stonefly dries (Stimulators, Salmonflies)
+   - FALL (Sep-Nov): BWOs, October Caddis, streamers, small nymphs, some terrestrials early fall
+5. **DO NOT recommend Stimulators, hoppers, or other terrestrial patterns in winter months - these are WRONG for the season**
+6. For spring creeks: Scuds, sowbugs, midges, and small mayflies are usually top producers year-round
+7. For tailwaters: Midges, scuds, and small mayflies dominate year-round
+8. For freestone rivers: Match seasonal hatches strictly - what's hatching NOW, not what works in summer
+9. Consider water temperature and fish feeding behavior for the conditions
 
 Respond with ONLY a JSON array of exactly 5 fly recommendations. Each must have:
 - fly_name: string (MUST be exact name from available flies list)
