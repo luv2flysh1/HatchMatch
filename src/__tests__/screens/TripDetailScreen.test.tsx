@@ -26,7 +26,7 @@ const mockTrip = {
       water_body: {
         id: 'water-1',
         name: 'South Platte River',
-        type: 'river',
+        type: 'river' as const,
         state: 'CO',
         city: 'Denver',
         latitude: 39.7392,
