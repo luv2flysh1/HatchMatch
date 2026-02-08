@@ -16,6 +16,7 @@ export default function ProfileScreen() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Profile editing state
@@ -148,15 +149,27 @@ export default function ProfileScreen() {
           />
 
           {!isForgotPassword && (
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-              placeholderTextColor={colors.neutral[400]}
-            />
+            <View style={styles.passwordContainer}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Password"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                placeholderTextColor={colors.neutral[400]}
+              />
+              <Pressable
+                style={styles.passwordToggle}
+                onPress={() => setShowPassword(!showPassword)}
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color={colors.neutral[500]}
+                />
+              </Pressable>
+            </View>
           )}
 
           <Pressable
@@ -412,6 +425,24 @@ const styles = StyleSheet.create({
     borderColor: colors.border.default,
     marginBottom: spacing[3],
     color: colors.text.primary,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background.primary,
+    borderRadius: borderRadius.input,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+    marginBottom: spacing[3],
+  },
+  passwordInput: {
+    flex: 1,
+    padding: spacing[3.5],
+    fontSize: 16,
+    color: colors.text.primary,
+  },
+  passwordToggle: {
+    padding: spacing[3],
   },
   primaryButton: {
     backgroundColor: colors.primary[500],
