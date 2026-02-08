@@ -143,7 +143,12 @@ async function getCachedRecommendations(waterBodyId: string) {
 // Helper: Cache recommendations in Supabase
 async function cacheRecommendations(
   waterBodyId: string,
-  data: { recommendations: FlyRecommendation[]; conditions_summary?: string; fishing_report?: FishingReport | null }
+  data: {
+    recommendations: FlyRecommendation[];
+    conditions_summary?: string;
+    fishing_report?: FishingReport | null;
+    suggested_shops?: SuggestedShop[] | null;
+  }
 ) {
   const today = new Date().toISOString().split('T')[0];
   const expiresAt = new Date(Date.now() + CACHE_DURATION).toISOString();
@@ -157,6 +162,7 @@ async function cacheRecommendations(
       conditions_snapshot: {
         conditions_summary: data.conditions_summary,
         fishing_report: data.fishing_report,
+        suggested_shops: data.suggested_shops,
       },
       expires_at: expiresAt,
     }, {
