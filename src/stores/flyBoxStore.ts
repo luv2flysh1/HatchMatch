@@ -110,10 +110,13 @@ export const useFlyBoxStore = create<FlyBoxState>()(
     }),
     {
       name: 'fly-box-storage',
-      // Only persist in non-test environments
       storage: typeof jest === 'undefined'
         ? createJSONStorage(() => require('@react-native-async-storage/async-storage').default)
-        : undefined,
+        : createJSONStorage(() => ({
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          })),
       skipHydration: typeof jest !== 'undefined',
     } as PersistOptions<FlyBoxState>
   )

@@ -467,8 +467,7 @@ export default function WaterDetailScreen() {
               styles.addToTripButton,
               pressed && styles.buttonPressed,
             ]}
-            onPress={handleOpenTripPicker}
-            disabled={!user}
+            onPress={user ? handleOpenTripPicker : () => router.push('/(tabs)/profile')}
           >
             <LinearGradient
               colors={gradients.primaryButton}
@@ -488,8 +487,8 @@ export default function WaterDetailScreen() {
               isFav && styles.favoriteButtonActive,
               pressed && styles.buttonPressed,
             ]}
-            onPress={handleToggleFavorite}
-            disabled={isTogglingFav || !user}
+            onPress={user ? handleToggleFavorite : () => router.push('/(tabs)/profile')}
+            disabled={isTogglingFav}
           >
             {isTogglingFav ? (
               <ActivityIndicator size="small" color={isFav ? colors.text.inverse : colors.text.secondary} />

@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
@@ -87,6 +88,9 @@ export default function CreateTripScreen() {
 
     if (tripId) {
       router.replace(`/trip/${tripId}`);
+    } else {
+      const storeError = useTripStore.getState().error;
+      setError(storeError || 'Failed to create trip. Please try again.');
     }
   };
 
@@ -241,7 +245,11 @@ export default function CreateTripScreen() {
               onPress={handleCreate}
               disabled={isLoading}
             >
-              <Text style={styles.createButtonText}>Create Trip</Text>
+              {isLoading ? (
+                <ActivityIndicator size="small" color={colors.text.inverse} />
+              ) : (
+                <Text style={styles.createButtonText}>Create Trip</Text>
+              )}
             </Pressable>
             <Pressable
               style={styles.cancelButton}

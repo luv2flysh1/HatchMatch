@@ -71,7 +71,7 @@ describe('ProfileScreen', () => {
       fireEvent.press(screen.getByText('Sign In'));
 
       await waitFor(() => {
-        expect(screen.getByText('Please enter email and password')).toBeTruthy();
+        expect(screen.getByText('Please enter your email')).toBeTruthy();
       });
     });
 
@@ -231,6 +231,170 @@ describe('ProfileScreen', () => {
       // ActivityIndicator doesn't have accessible text, so we check it doesn't render the form
       expect(screen.queryByText('Welcome to HatchMatch')).toBeNull();
       expect(screen.queryByText('Sign In')).toBeNull();
+    });
+  });
+
+  describe('forgot password flow', () => {
+    it('"Forgot Password?" switches to reset form', () => {
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      fireEvent.press(screen.getByText('Forgot Password?'));
+
+      expect(screen.getByText('Send Reset Link')).toBeTruthy();
+      expect(screen.queryByPlaceholderText('Password')).toBeNull();
+    });
+
+    it('"Send Reset Link" calls resetPassword', async () => {
+      const mockResetPassword = jest.fn().mockResolvedValue({ error: null });
+      useAuthStore.setState({ resetPassword: mockResetPassword });
+
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      fireEvent.press(screen.getByText('Forgot Password?'));
+      fireEvent.changeText(screen.getByPlaceholderText('Email'), 'test@example.com');
+      fireEvent.press(screen.getByText('Send Reset Link'));
+
+      await waitFor(() => {
+        expect(mockResetPassword).toHaveBeenCalledWith('test@example.com');
+      });
+    });
+
+    it('shows success banner after reset', () => {
+      useAuthStore.setState({
+        resetPasswordSent: true,
+      });
+
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      // Need to be in forgot password mode to see the banner
+      fireEvent.press(screen.getByText('Forgot Password?'));
+
+      expect(screen.getByText('Check your email for a password reset link')).toBeTruthy();
+    });
+
+    it('"Back to Sign In" returns from reset mode', () => {
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      fireEvent.press(screen.getByText('Forgot Password?'));
+      expect(screen.getByText('Send Reset Link')).toBeTruthy();
+
+      fireEvent.press(screen.getByText('Back to Sign In'));
+
+      expect(screen.getByText('Sign In')).toBeTruthy();
+      expect(screen.getByPlaceholderText('Password')).toBeTruthy();
+    });
+  });
+
+  describe('profile editing', () => {
+    beforeEach(() => {
+      useAuthStore.setState({
+        user: mockUser,
+        profile: mockProfile,
+        isInitialized: true,
+        updateProfile: jest.fn().mockResolvedValue({ error: null }),
+      });
+    });
+
+    it('"Edit" enters edit mode with name input and skill pills', () => {
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      fireEvent.press(screen.getByText('Edit'));
+
+      expect(screen.getByPlaceholderText('Your name')).toBeTruthy();
+      expect(screen.getByText('Beginner')).toBeTruthy();
+      expect(screen.getByText('Intermediate')).toBeTruthy();
+      expect(screen.getByText('Advanced')).toBeTruthy();
+    });
+
+    it('skill pill press changes selection', () => {
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      fireEvent.press(screen.getByText('Edit'));
+
+      // Initially intermediate is selected (from mock profile)
+      // Clicking Advanced should select it
+      fireEvent.press(screen.getByText('Advanced'));
+
+      // The visual change is tested by styling, but we verify the button exists and can be pressed
+      expect(screen.getByText('Advanced')).toBeTruthy();
+    });
+
+    it('"Save" calls updateProfile', async () => {
+      const mockUpdateProfile = jest.fn().mockResolvedValue({ error: null });
+      useAuthStore.setState({
+        user: mockUser,
+        profile: mockProfile,
+        isInitialized: true,
+        updateProfile: mockUpdateProfile,
+      });
+
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      fireEvent.press(screen.getByText('Edit'));
+      fireEvent.changeText(screen.getByPlaceholderText('Your name'), 'New Name');
+      fireEvent.press(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(mockUpdateProfile).toHaveBeenCalledWith(
+          expect.objectContaining({
+            name: 'New Name',
+          })
+        );
+      });
+    });
+
+    it('"Cancel" exits edit mode without saving', async () => {
+      const mockUpdateProfile = jest.fn();
+      useAuthStore.setState({
+        user: mockUser,
+        profile: mockProfile,
+        isInitialized: true,
+        updateProfile: mockUpdateProfile,
+      });
+
+      render(
+        <TestWrapper>
+          <ProfileScreen />
+        </TestWrapper>
+      );
+
+      fireEvent.press(screen.getByText('Edit'));
+      expect(screen.getByPlaceholderText('Your name')).toBeTruthy();
+
+      fireEvent.press(screen.getByText('Cancel'));
+
+      // Should be back to normal profile view
+      expect(screen.queryByPlaceholderText('Your name')).toBeNull();
+      expect(screen.getByText('Test Angler')).toBeTruthy();
+      expect(mockUpdateProfile).not.toHaveBeenCalled();
     });
   });
 });

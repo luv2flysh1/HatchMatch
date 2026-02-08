@@ -25,6 +25,9 @@ jest.mock('react-native', () => ({
 
 import { supabase } from '../../services/supabase';
 
+// Suppress expected console.error from store error-handling paths
+jest.spyOn(console, 'error').mockImplementation(() => {});
+
 // Test data
 const mockRecommendations: FlyRecommendation[] = [
   {
@@ -114,6 +117,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       // Mock Edge Function response
@@ -190,6 +194,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       // Mock Edge Function error
@@ -213,6 +218,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       // Mock invalid Edge Function response
@@ -259,6 +265,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       // Mock Edge Function response with fishing report
@@ -285,6 +292,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
@@ -327,6 +335,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
@@ -373,6 +382,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
@@ -416,6 +426,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       (supabase.functions.invoke as jest.Mock).mockImplementation(async () => {
@@ -440,6 +451,7 @@ describe('recommendationStore', () => {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockResolvedValue({ data: null, error: null }),
+        upsert: jest.fn().mockResolvedValue({ error: null }),
       });
 
       (supabase.functions.invoke as jest.Mock).mockResolvedValue({
