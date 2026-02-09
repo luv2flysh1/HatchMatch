@@ -1,36 +1,38 @@
-# HatchMatch 🎣
+# HatchMatch
 
-A mobile app that tells you which flies are working best on any river or lake. Built with Expo (React Native) for iOS and Android.
+[![CI](https://github.com/luv2flysh1/HatchMatch/actions/workflows/ci.yml/badge.svg)](https://github.com/luv2flysh1/HatchMatch/actions/workflows/ci.yml)
 
-## Overview
-
-HatchMatch helps fly anglers:
-- **Get fly recommendations** based on current conditions, hatch charts, and weather
-- **Plan fishing trips** with single or multiple water bodies
-- **Find fly shops** near your destination with directions
-- **Log catches** to improve recommendations for the community
+Your AI-powered fly fishing companion. Get personalized fly recommendations based on real-time conditions, local fishing reports, and seasonal hatches.
 
 ## Features
 
-### MVP (Phase 1)
-- [x] User authentication (email/password)
-- [ ] Water body search (by name or GPS)
-- [ ] AI-powered fly recommendations
-- [ ] Trip planning
-- [ ] Fly shop locator
+### Fly Recommendations
+- **AI-powered suggestions** using Claude to analyze current conditions, weather, and seasonal patterns
+- **Local fly shop reports** - scrapes and aggregates fishing reports from nearby fly shops
+- **Seasonal accuracy** - recommendations match the current month's hatches (no summer flies in winter!)
+- **Water-type intelligence** - understands spring creeks, tailwaters, freestone rivers, and lakes
 
-### Phase 2
-- [ ] Multi-trip management with auto-refresh
-- [ ] Catch reporting with photos
-- [ ] Offline mode
-- [ ] Purchase links to retailers
-- [ ] Push notifications
+### Trip Planning
+- **Multi-water trips** - plan trips with multiple fishing destinations
+- **Aggregated recommendations** - get a unified fly box suggestion across all waters
+- **Date tracking** - organize upcoming and past trips
 
-### Phase 3
-- [ ] Shop/guide partnerships
-- [ ] Social features
-- [ ] Personal analytics
-- [ ] Fly box inventory
+### Water Discovery
+- **Search waters** by name across the US
+- **Detailed info** - species, access, conditions
+- **USGS integration** - real-time flow data where available
+
+### Fly Shops
+- **GPS-based search** - find fly shops within 100 miles
+- **Quick actions** - call, get directions, visit website
+
+### Fly Box
+- **Save recommendations** to your personal fly box
+- **Shopping list** - track what you need to buy
+
+## Screenshots
+
+*Coming soon*
 
 ## Tech Stack
 
@@ -39,16 +41,16 @@ HatchMatch helps fly anglers:
 | Mobile | Expo / React Native |
 | Navigation | Expo Router |
 | State | Zustand |
-| Backend | Supabase (Auth, Database, Storage) |
-| AI | Claude API |
-| Maps | Google Maps Platform |
+| Backend | Supabase (Auth, Database, Edge Functions) |
+| AI | Claude API (Anthropic) |
+| Weather | Open-Meteo API |
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
-- npm or yarn
+- npm
 - Expo Go app (for mobile testing)
 
 ### Installation
@@ -68,82 +70,74 @@ npm start
 ### Running the App
 
 ```bash
-npm run web      # Open in web browser
-npm run android  # Open on Android device/emulator
-npm run ios      # Open on iOS simulator (macOS only)
+npm start           # Start Expo dev server
+npm run android     # Open on Android device/emulator
+npm run ios         # Open on iOS simulator (macOS only)
+npm run web         # Open in web browser
 ```
 
 ### Running Tests
 
 ```bash
-npm test              # Run all tests
-npm run test:watch    # Watch mode
-npm run test:coverage # With coverage report
+npm test                    # Store/utility tests (90 tests)
+npm run test:components     # Component tests (111 tests)
+npm run test:all            # All tests (201 total)
+npm run test:edge           # Edge function tests (Deno)
+```
+
+### Building for Distribution
+
+```bash
+# Android APK (for testing)
+eas build --platform android --profile preview
+
+# Production builds
+eas build --platform android --profile production
+eas build --platform ios --profile production
 ```
 
 ## Project Structure
 
 ```
 HatchMatch/
-├── docs/                    # Planning & documentation
-│   ├── FEATURE_PLAN.md      # Feature breakdown
-│   ├── ARCHITECTURE.md      # Technical architecture
-│   └── TEST_PLAN.md         # Test cases
 ├── src/
 │   ├── app/                 # Expo Router screens
-│   │   ├── (tabs)/          # Tab navigation
-│   │   ├── water/           # Water body screens
-│   │   └── trip/            # Trip screens
+│   │   ├── (tabs)/          # Tab navigation (water, trips, shops, profile)
+│   │   ├── water/           # Water detail screens
+│   │   └── trip/            # Trip management screens
 │   ├── components/          # Reusable UI components
 │   ├── hooks/               # Custom React hooks
-│   ├── services/            # API & external services
+│   ├── services/            # Supabase client
 │   ├── stores/              # Zustand state stores
+│   ├── theme/               # Design system (colors, typography, spacing)
 │   ├── types/               # TypeScript types
-│   └── utils/               # Utility functions
+│   └── __tests__/           # Test files
 ├── supabase/
-│   └── schema.sql           # Database schema
-└── assets/                  # Images, icons, fonts
+│   ├── functions/           # Edge functions (recommendations, scraping)
+│   ├── migrations/          # Database migrations
+│   └── schema.sql           # Full database schema
+├── assets/                  # Images, icons
+└── .github/workflows/       # CI configuration
 ```
 
-## Documentation
+## Environment Setup
 
-| Document | Description |
-|----------|-------------|
-| [Feature Plan](docs/FEATURE_PLAN.md) | Detailed feature breakdown and roadmap |
-| [Architecture](docs/ARCHITECTURE.md) | Technical architecture and data model |
-| [Test Plan](docs/TEST_PLAN.md) | Comprehensive test cases |
+### Supabase
 
-## Configuration
+The app uses Supabase for:
+- User authentication
+- Database (PostgreSQL)
+- Edge Functions (Deno)
 
-### Supabase Setup
+Project ref: `okntzxxufjxxugtdlfrv`
 
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run `supabase/schema.sql` in the SQL Editor
-3. Update credentials in `src/services/supabase.ts`
+### Required Secrets (for Edge Functions)
 
-### Environment Variables (Future)
-
-```bash
-EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
-```
-
-## Business Model
-
-**Freemium** with optional premium subscription:
-
-| Feature | Free | Premium |
-|---------|------|---------|
-| Fly recommendations | 1/day | Unlimited |
-| Trip planning | 1 active | Unlimited |
-| Offline mode | No | Yes |
-| Auto-refresh | No | Yes |
-
-**Pricing:** $4.99/month or $29.99/year
+- `ANTHROPIC_API_KEY` - Claude API key for AI recommendations
 
 ## Contributing
 
-This project is currently in early development. Contributions welcome once we reach MVP.
+This project is in active development. Issues and PRs welcome.
 
 ## License
 
@@ -151,4 +145,4 @@ Private - All rights reserved.
 
 ---
 
-*Built with ☕ and 🎣 for the fly fishing community*
+*Built for the fly fishing community*
