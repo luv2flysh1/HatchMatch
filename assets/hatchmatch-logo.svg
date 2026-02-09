@@ -1,0 +1,156 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle with gradient -->
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a365d"/>
+      <stop offset="50%" stop-color="#2c5282"/>
+      <stop offset="100%" stop-color="#1e4e8c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="512" cy="512" r="512" fill="url(#bgGradient)"/>
+
+  <!-- Inner decorative circle -->
+  <circle cx="512" cy="512" r="420" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="8"/>
+
+  <!-- Logo group - scaled and centered -->
+  <g transform="translate(212, 212) scale(6)">
+    <!-- Hook - curved fishing hook shape -->
+    <path
+      d="M 70 25
+         Q 80 25, 85 35
+         Q 90 50, 80 65
+         Q 70 80, 50 82
+         Q 35 83, 28 75
+         Q 22 68, 25 60
+         Q 28 52, 38 52
+         Q 45 52, 48 58"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="4"
+      stroke-linecap="round"
+    />
+
+    <!-- Hook point/barb -->
+    <path
+      d="M 28 75 L 22 70 L 28 68"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="3"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- Fly body - elongated oval at hook bend -->
+    <path
+      d="M 65 28 Q 72 30, 70 38 Q 68 45, 60 43 Q 55 40, 58 33 Q 60 28, 65 28"
+      fill="#ffffff"
+      opacity="0.9"
+    />
+
+    <!-- Fly wing 1 - upper -->
+    <path
+      d="M 62 32
+         Q 45 18, 25 22
+         Q 35 28, 55 35"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      opacity="0.85"
+    />
+
+    <!-- Fly wing 2 - lower -->
+    <path
+      d="M 60 38
+         Q 42 30, 22 38
+         Q 35 40, 55 40"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      opacity="0.85"
+    />
+
+    <!-- Hackle fibers - feathery details -->
+    <path
+      d="M 68 33 Q 75 28, 78 20"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.7"
+    />
+    <path
+      d="M 70 36 Q 78 33, 82 26"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.7"
+    />
+    <path
+      d="M 70 40 Q 80 40, 85 35"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.7"
+    />
+
+    <!-- Tail fibers -->
+    <path
+      d="M 65 28 Q 60 20, 55 12"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.6"
+    />
+    <path
+      d="M 67 27 Q 65 18, 62 10"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.6"
+    />
+    <path
+      d="M 69 27 Q 70 17, 70 9"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.6"
+    />
+
+    <!-- Eye of hook -->
+    <circle
+      cx="70"
+      cy="25"
+      r="3"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="2"
+    />
+
+    <!-- Water ripple underneath - subtle -->
+    <path
+      d="M 20 88 Q 35 85, 50 88 Q 65 91, 80 88"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.4"
+    />
+    <path
+      d="M 30 94 Q 45 91, 60 94 Q 70 96, 75 94"
+      fill="none"
+      stroke="#ffffff"
+      stroke-width="1.5"
+      stroke-linecap="round"
+      opacity="0.25"
+    />
+  </g>
+</svg>
